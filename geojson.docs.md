@@ -1,0 +1,3 @@
+View and visualize GeoJSON data on an interactive OpenStreetMap with customizable styling options. Paste GeoJSON objects (Feature, FeatureCollection, or Geometry) into the editor, adjust fill color and opacity, and render the features directly on the map. Download the rendered map as a PNG image with proper attribution included.
+
+<!-- Generated from commit: 0aa3f58ead0363c2ef761af9aa2bb0fb1d336f50 -->
