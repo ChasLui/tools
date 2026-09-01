@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GeoJSON Map Viewer</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+      :root {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #172a35;
+        background: #eef2f3;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      button,
+      textarea,
+      input {
+        font: inherit;
+      }
+      main {
+        min-height: 100vh;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      header {
+        max-width: 1440px;
+        width: 100%;
+        margin: 0 auto;
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .eyebrow {
+        margin: 0 0 0.25rem;
+        color: #376272;
+        font:
+          700 0.72rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(1.7rem, 3vw, 2.4rem);
+        letter-spacing: -0.04em;
+      }
+      .privacy,
+      .hint,
+      .status {
+        margin: 0;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        color: #4c626c;
+      }
+      .workspace {
+        flex: 1;
+        max-width: 1440px;
+        width: 100%;
+        min-height: 680px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(320px, 0.78fr) minmax(0, 1.7fr);
+        overflow: hidden;
+        border: 1px solid #b7c8cc;
+        border-radius: 0.8rem;
+        background: #fff;
+        box-shadow: 0 15px 45px #28445119;
+      }
+      .editor {
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        border-right: 1px solid #c8d5d8;
+      }
+      label {
+        font-size: 0.82rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-weight: 700;
+        color: #315460;
+      }
+      textarea {
+        flex: 1;
+        min-height: 300px;
+        resize: vertical;
+        padding: 1rem;
+        border: 1px solid #b7c8cc;
+        border-radius: 0.4rem;
+        background: #f8fbfb;
+        color: #152d38;
+        font:
+          0.85rem/1.55 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        outline-color: #028fc3;
+      }
+      fieldset {
+        border: 1px solid #c8d5d8;
+        border-radius: 0.4rem;
+        padding: 0.75rem;
+        display: grid;
+        gap: 0.7rem;
+      }
+      legend {
+        padding: 0 0.25rem;
+        color: #315460;
+        font:
+          700 0.76rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+      }
+      fieldset label {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
+        gap: 0.6rem;
+        color: #315460;
+        font:
+          600 0.85rem/1 Arial,
+          sans-serif;
+      }
+      input[type="color"] {
+        width: 2rem;
+        height: 1.75rem;
+        padding: 0.12rem;
+        border: 1px solid #9fb5bb;
+        border-radius: 0.25rem;
+        background: #fff;
+        cursor: pointer;
+      }
+      input[type="range"] {
+        width: 8rem;
+        accent-color: #028fc3;
+        cursor: pointer;
+      }
+      output {
+        min-width: 3.4rem;
+        text-align: right;
+        color: #315460;
+        font:
+          0.78rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+      }
+      .actions {
+        display: flex;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+      }
+      button {
+        border: 0;
+        border-radius: 0.35rem;
+        padding: 0.68rem 0.9rem;
+        background: #028fc3;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0579a7;
+      }
+      button.quiet {
+        background: #e4edef;
+        color: #254652;
+      }
+      button.quiet:hover {
+        background: #cfdde0;
+      }
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+      .status {
+        min-height: 2.5em;
+        color: #315460;
+      }
+      .hint {
+        border-top: 1px solid #dbe4e6;
+        padding-top: 0.8rem;
+      }
+      .map-panel {
+        min-height: 520px;
+        background: #dce8e5;
+      }
+      .map {
+        width: 100%;
+        height: 100%;
+        min-height: 680px;
+      }
+      .leaflet-popup-content pre {
+        margin: 0;
+        max-width: 260px;
+        white-space: pre-wrap;
+      }
+      @media (max-width: 800px) {
+        main {
+          padding: 0.75rem;
+        }
+        header {
+          align-items: start;
+          flex-direction: column;
+        }
+        .workspace {
+          min-height: auto;
+          grid-template-columns: 1fr;
+        }
+        .editor {
+          border-right: 0;
+          border-bottom: 1px solid #c8d5d8;
+        }
+        textarea {
+          min-height: 280px;
+        }
+        .map,
+        .map-panel {
+          min-height: 440px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">OpenStreetMap overlay</p>
+          <h1>GeoJSON Map Viewer</h1>
+        </div>
+        <p class="privacy">Your GeoJSON stays in this browser.</p>
+      </header>
+      <section class="workspace">
+        <aside class="editor">
+          <label for="geojson">GeoJSON</label>
+          <textarea
+            id="geojson"
+            spellcheck="false"
+            placeholder="Paste a Feature, FeatureCollection, or geometry here…"
+          ></textarea>
+          <fieldset>
+            <legend>Feature style</legend>
+            <label for="fill-color"
+              ><span>Fill colour</span
+              ><input id="fill-color" type="color" value="#028FC3" /><output
+                id="color-value"
+                >#028FC3</output
+              ></label
+            >
+            <label for="fill-opacity"
+              ><span>Opacity</span
+              ><input
+                id="fill-opacity"
+                type="range"
+                min="0"
+                max="100"
+                value="50"
+              /><output id="opacity-value">50%</output></label
+            >
+          </fieldset>
+          <div class="actions">
+            <button id="render">Render map</button
+            ><button class="quiet" id="download">Download PNG</button
+            ><button class="quiet" id="example">Load example</button
+            ><button class="quiet" id="clear">Clear</button>
+          </div>
+          <p class="status" id="status" role="status">
+            Paste GeoJSON, then render it.
+          </p>
+          <p class="hint">
+            Supports GeoJSON Geometry, Feature, and FeatureCollection objects.
+            Coordinates use longitude, latitude order.
+          </p>
+        </aside>
+        <section class="map-panel" aria-label="Map">
+          <div class="map" id="map"></div>
+        </section>
+      </section>
+    </main>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const example = `{"type":"Feature","properties":{"name":"Example polygon"},"geometry":{"type":"Polygon","coordinates":[[[-122.43,37.77],[-122.40,37.77],[-122.40,37.79],[-122.43,37.79],[-122.43,37.77]]]}}`;
+      const source = document.querySelector("#geojson"),
+        colorInput = document.querySelector("#fill-color"),
+        opacityInput = document.querySelector("#fill-opacity"),
+        status = document.querySelector("#status"),
+        download = document.querySelector("#download");
+      const map = L.map("map", { zoomControl: false }).setView(
+        [37.77, -122.42],
+        12,
+      );
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+      }).addTo(map);
+      let layer = null;
+      function style() {
+        return {
+          color: colorInput.value,
+          weight: 3,
+          fillColor: colorInput.value,
+          fillOpacity: Number(opacityInput.value) / 100,
+        };
+      }
+      function setStatus(text) {
+        status.textContent = text;
+      }
+      function render() {
+        try {
+          const geojson = JSON.parse(source.value);
+          if (layer) map.removeLayer(layer);
+          layer = L.geoJSON(geojson, {
+            style,
+            pointToLayer: (_, latlng) =>
+              L.circleMarker(latlng, { radius: 7, ...style() }),
+            onEachFeature: (feature, featureLayer) => {
+              if (feature.properties && Object.keys(feature.properties).length)
+                featureLayer.bindPopup(
+                  "<pre>" +
+                    escapeHtml(JSON.stringify(feature.properties, null, 2)) +
+                    "</pre>",
+                );
+            },
+          }).addTo(map);
+          const bounds = layer.getBounds();
+          if (bounds.isValid()) map.fitBounds(bounds.pad(0.12));
+          setStatus("Rendered. Click a feature to inspect its properties.");
+        } catch (error) {
+          setStatus("Could not parse GeoJSON: " + error.message);
+        }
+      }
+      function updateStyle() {
+        document.querySelector("#color-value").textContent =
+          colorInput.value.toUpperCase();
+        document.querySelector("#opacity-value").textContent =
+          opacityInput.value + "%";
+        if (layer) layer.setStyle(style());
+      }
+      colorInput.addEventListener("input", updateStyle);
+      opacityInput.addEventListener("input", updateStyle);
+      document.querySelector("#render").addEventListener("click", render);
+      document.querySelector("#example").addEventListener("click", () => {
+        source.value = example;
+        setStatus("Example loaded — render when ready.");
+      });
+      document.querySelector("#clear").addEventListener("click", () => {
+        source.value = "";
+        if (layer) map.removeLayer(layer);
+        layer = null;
+        setStatus("Cleared.");
+      });
+      download.addEventListener("click", exportPng);
+      async function exportPng() {
+        let geojson;
+        try {
+          geojson = JSON.parse(source.value);
+        } catch {
+          setStatus("Paste valid GeoJSON before downloading a PNG.");
+          return;
+        }
+        download.disabled = true;
+        download.textContent = "Preparing PNG…";
+        setStatus("Preparing PNG…");
+        try {
+          const size = map.getSize(),
+            scale = Math.min(2, window.devicePixelRatio || 1),
+            canvas = document.createElement("canvas");
+          canvas.width = Math.round(size.x * scale);
+          canvas.height = Math.round(size.y * scale);
+          const context = canvas.getContext("2d");
+          context.scale(scale, scale);
+          const zoom = map.getZoom(),
+            tileSize = 256,
+            worldSize = 2 ** zoom,
+            origin = map.getPixelOrigin(),
+            firstX = Math.floor(origin.x / tileSize),
+            lastX = Math.floor((origin.x + size.x - 1) / tileSize),
+            firstY = Math.floor(origin.y / tileSize),
+            lastY = Math.floor((origin.y + size.y - 1) / tileSize);
+          const tiles = [];
+          for (let x = firstX; x <= lastX; x++)
+            for (let y = firstY; y <= lastY; y++) {
+              if (y < 0 || y >= worldSize) continue;
+              const wrappedX = ((x % worldSize) + worldSize) % worldSize;
+              tiles.push(
+                loadTile(
+                  `https://${["a", "b", "c"][(wrappedX + y) % 3]}.tile.openstreetmap.org/${zoom}/${wrappedX}/${y}.png`,
+                ).then((image) =>
+                  context.drawImage(
+                    image,
+                    x * tileSize - origin.x,
+                    y * tileSize - origin.y,
+                  ),
+                ),
+              );
+            }
+          await Promise.all(tiles);
+          drawGeojson(context, geojson);
+          drawAttribution(context, size.x, size.y);
+          const link = document.createElement("a");
+          link.download = "geojson-map.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          setStatus("PNG downloaded with OpenStreetMap attribution.");
+        } catch (error) {
+          setStatus("Could not export PNG: " + error.message);
+        } finally {
+          download.disabled = false;
+          download.textContent = "Download PNG";
+        }
+      }
+      function loadTile(url) {
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.crossOrigin = "anonymous";
+          image.onload = () => resolve(image);
+          image.onerror = () =>
+            reject(
+              new Error("OpenStreetMap tiles could not be loaded for export."),
+            );
+          image.src = url;
+        });
+      }
+      function drawGeojson(context, value) {
+        const point = ([longitude, latitude]) =>
+          map.latLngToContainerPoint([latitude, longitude]);
+        const line = (coordinates) => {
+          context.beginPath();
+          coordinates.forEach((coordinate, i) => {
+            const p = point(coordinate);
+            i ? context.lineTo(p.x, p.y) : context.moveTo(p.x, p.y);
+          });
+          context.strokeStyle = colorInput.value;
+          context.lineWidth = 3;
+          context.stroke();
+        };
+        const polygon = (rings) => {
+          context.beginPath();
+          rings.forEach((ring) =>
+            ring.forEach((coordinate, i) => {
+              const p = point(coordinate);
+              i ? context.lineTo(p.x, p.y) : context.moveTo(p.x, p.y);
+            }),
+          );
+          context.fillStyle = colorInput.value;
+          context.globalAlpha = Number(opacityInput.value) / 100;
+          context.fill("evenodd");
+          context.globalAlpha = 1;
+          context.strokeStyle = colorInput.value;
+          context.lineWidth = 3;
+          context.stroke();
+        };
+        const marker = (coordinate) => {
+          const p = point(coordinate);
+          context.beginPath();
+          context.arc(p.x, p.y, 7, 0, Math.PI * 2);
+          context.fillStyle = colorInput.value;
+          context.globalAlpha = Number(opacityInput.value) / 100;
+          context.fill();
+          context.globalAlpha = 1;
+          context.strokeStyle = colorInput.value;
+          context.lineWidth = 2;
+          context.stroke();
+        };
+        const geometry = (g) => {
+          if (!g) return;
+          if (g.type === "GeometryCollection")
+            return g.geometries.forEach(geometry);
+          if (g.type === "Point") return marker(g.coordinates);
+          if (g.type === "MultiPoint") return g.coordinates.forEach(marker);
+          if (g.type === "LineString") return line(g.coordinates);
+          if (g.type === "MultiLineString") return g.coordinates.forEach(line);
+          if (g.type === "Polygon") return polygon(g.coordinates);
+          if (g.type === "MultiPolygon") return g.coordinates.forEach(polygon);
+        };
+        if (value.type === "FeatureCollection")
+          value.features.forEach((feature) => geometry(feature.geometry));
+        else if (value.type === "Feature") geometry(value.geometry);
+        else geometry(value);
+      }
+      function drawAttribution(context, width, height) {
+        const text = "© OpenStreetMap contributors",
+          padding = 5;
+        context.font = "12px Arial, sans-serif";
+        const textWidth = context.measureText(text).width,
+          x = width - textWidth - padding * 2 - 7,
+          y = height - 25;
+        context.fillStyle = "rgba(255,255,255,.86)";
+        context.fillRect(x, y, textWidth + padding * 2, 20);
+        context.fillStyle = "#222";
+        context.fillText(text, x + padding, y + 14);
+      }
+      function escapeHtml(value) {
+        return value.replace(
+          /[&<>'"]/g,
+          (char) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              "'": "&#39;",
+              '"': "&quot;",
+            })[char],
+        );
+      }
+    </script>
+  </body>
+</html>
