@@ -1,0 +1,3 @@
+View a seeded generative watercolor painting of a pelican riding a bicycle. Adjust parameters like wash layers, edge bleed, ink wobble, and splatter to customize the artistic effects, or explore different seeds to generate entirely new compositions. Each painting combines layered transparent washes, hand-drawn ink details, and flicked paint splatters to create a unique illustration with watercolor aesthetics.
+
+<!-- Generated from commit: dcf287f6efbfbd070eeb13c695cc2bef0f74e29d -->

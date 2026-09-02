@@ -71,6 +71,13 @@
       border-radius: 4px;
       resize: vertical;
     }
+    .sponsor-message-form {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
     .buttons {
       display: flex;
       gap: 10px;
@@ -354,23 +361,34 @@
     }
     .newsletter-item .delete-item-btn {
       position: absolute;
-      top: 0;
-      right: 0;
-      background: #dc3545;
-      color: white;
-      border: none;
+      top: 6px;
+      right: 6px;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid #e7b7bf;
       border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+      color: #a61b2b;
+      display: inline-flex;
+      font-size: 18px;
+      font-weight: 600;
       width: 24px;
       height: 24px;
-      font-size: 16px;
-      line-height: 22px;
-      text-align: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
       cursor: pointer;
-      opacity: 0.5;
-      transition: opacity 0.15s;
+      opacity: 0.72;
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s, transform 0.15s;
     }
-    .newsletter-item .delete-item-btn:hover {
+    .newsletter-item .delete-item-btn:hover,
+    .newsletter-item .delete-item-btn:focus-visible {
+      background: #a61b2b;
+      border-color: #a61b2b;
+      color: white;
       opacity: 1;
+      outline: none;
+      transform: scale(1.04);
     }
   </style>
 </head>
@@ -381,6 +399,13 @@
     <p>This tool generates HTML from the <a href="https://datasette.simonwillison.net/simonwillisonblog" target="_blank">Datasette backup of simonwillison.net</a> (<a href="https://github.com/simonw/simonwillisonblog-backup/actions/workflows/backup.yml">action</a>) for copying into Substack.</p>
     <p>See: <a href="https://simonwillison.net/2023/Apr/4/substack-observable/" target="_blank">Semi-automating a Substack newsletter with an Observable notebook</a></p>
   </div>
+
+  <form class="sponsor-message-form" id="sponsorMessageForm">
+    <div class="control-group">
+      <label for="sponsorMessageInput">Sponsor message</label>
+      <textarea id="sponsorMessageInput" placeholder="Optional Markdown"></textarea>
+    </div>
+  </form>
 
   <div class="days-since" id="daysSince">Loading...</div>
 
@@ -461,6 +486,8 @@
       const numDaysValue = document.getElementById('numDaysValue');
       const skipExistingInput = document.getElementById('skipExisting');
       const onlyPreCutoffInput = document.getElementById('onlyPreCutoff');
+      const sponsorMessageForm = document.getElementById('sponsorMessageForm');
+      const sponsorMessageInput = document.getElementById('sponsorMessageInput');
       const rssInput = document.getElementById('rssInput');
       const statusEl = document.getElementById('status');
       const previewEl = document.getElementById('preview');
@@ -475,6 +502,23 @@
 
       // URL replacements map (old URL -> new URL)
       let urlReplacements = new Map();
+      const sponsorMessageStorageKey = 'blog-to-newsletter:sponsor-message';
+
+      function restoreSponsorMessage() {
+        const savedSponsorMessage = localStorage.getItem(sponsorMessageStorageKey);
+        if (savedSponsorMessage) {
+          sponsorMessageInput.value = savedSponsorMessage;
+        }
+      }
+
+      function saveSponsorMessage() {
+        const sponsorMessage = sponsorMessageInput.value;
+        if (sponsorMessage.trim()) {
+          localStorage.setItem(sponsorMessageStorageKey, sponsorMessage);
+        } else {
+          localStorage.removeItem(sponsorMessageStorageKey);
+        }
+      }
 
       // Persist story order in URL hash fragment
       function updateUrlHash() {
@@ -532,7 +576,7 @@ with content as (
     created,
     slug,
     '<p><strong>Link</strong> ' || date(created) || ' <a href="'|| link_url || '">'
-      || link_title || '</a>:</p><p>' || ' ' || replace(commentary, '
+      || replace(replace(replace(link_title, '&', '&amp;'), '<', '&lt;'), '>', '&gt;') || '</a>:</p><p>' || ' ' || replace(commentary, '
 ', '<br>') || '</p>'
       as html,
     json_object(
@@ -633,6 +677,7 @@ with content as (
     url as external_url
   from blog_beat
   where coalesce(note, '') != '' and is_draft = 0
+    and beat_type not in ('sighting', 'til_update')
 ),
 collected as (
   select
@@ -790,7 +835,7 @@ order by
 
       // Render first three paragraphs of a chapter with word count suffix
       function renderChapterExcerpt(body, chapterUrl) {
-        const fullHtml = marked.parse(body);
+        const fullHtml = renderMarkdown(body);
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = fullHtml;
         const paragraphs = tempDiv.querySelectorAll(':scope > p');
@@ -815,6 +860,92 @@ order by
         return excerptHtml;
       }
 
+      const excludedBeatTypes = new Set(['sighting', 'til_update']);
+      const beatTypeDisplay = {
+        release: 'Release',
+        til: 'TIL',
+        research: 'Research',
+        tool: 'Tool',
+        museum: 'Museum'
+      };
+      const beatSummaryOrder = ['release', 'til', 'research', 'tool', 'museum'];
+      const beatSummaryLabels = {
+        release: ['release', 'releases'],
+        til: ['TIL', 'TILs'],
+        research: ['research report', 'research reports'],
+        tool: ['tool', 'tools'],
+        museum: ['museum', 'museums']
+      };
+
+      function getBeatInfo(entry) {
+        if (!entry.json || entry.json === 'null') return {};
+        return typeof entry.json === 'string' ? JSON.parse(entry.json) : entry.json;
+      }
+
+      function formatBeatSummary(beatType, count) {
+        const labels = beatSummaryLabels[beatType];
+        const label = labels
+          ? labels[count === 1 ? 0 : 1]
+          : beatType.replace(/_/g, ' ');
+        return `${count} ${label}`;
+      }
+
+      function getBeatSummaryItems() {
+        const counts = new Map();
+
+        beats.forEach(beat => {
+          const beatType = getBeatInfo(beat).beat_type;
+          if (!beatType || excludedBeatTypes.has(beatType)) return;
+          counts.set(beatType, (counts.get(beatType) || 0) + 1);
+        });
+
+        const knownTypes = beatSummaryOrder.filter(beatType => counts.has(beatType));
+        const otherTypes = Array.from(counts.keys())
+          .filter(beatType => !beatSummaryOrder.includes(beatType))
+          .sort();
+
+        return [...knownTypes, ...otherTypes].map(beatType => (
+          formatBeatSummary(beatType, counts.get(beatType))
+        ));
+      }
+
+      function renderTopSponsorMessage() {
+        const sponsorMessage = sponsorMessageInput.value.trim();
+        if (!sponsorMessage) return '';
+
+        const sponsorMessageHtml = marked.parseInline(sponsorMessage);
+        return `<hr>\n<p><strong>Sponsor message:</strong> ${sponsorMessageHtml}</p>\n<hr>\n`;
+      }
+
+      function escapeHtml(text) {
+        return String(text || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      function escapeAttribute(text) {
+        return escapeHtml(text)
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function unescapeMarkdownText(text) {
+        return String(text || '').replace(/\\([\\`*{}\[\]()#+\-.!_<>"])/g, '$1');
+      }
+
+      function renderMarkdown(markdown) {
+        const markdownWithSafeImages = String(markdown || '').replace(
+          /!\[([^\]]*)\]\(([^)\s]+)(?:\s+(?:"([^"]*)"|'([^']*)'|\(([^)]*)\)))?\)/g,
+          (match, alt, src, doubleQuotedTitle, singleQuotedTitle, parenTitle) => {
+            const title = doubleQuotedTitle || singleQuotedTitle || parenTitle;
+            const titleHtml = title ? ` title="${escapeAttribute(unescapeMarkdownText(title))}"` : '';
+            return `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(unescapeMarkdownText(alt))}"${titleHtml}>`;
+          }
+        );
+        return marked.parse(markdownWithSafeImages);
+      }
+
       // Filter content based on settings
       function filterContent() {
         const skipExisting = skipExistingInput.checked;
@@ -831,6 +962,12 @@ order by
           tags: typeof tags === 'string' ? JSON.parse(tags) : tags
         }));
 
+        // Skip beat types that should not be included in the newsletter.
+        filtered = filtered.filter(e => {
+          if (e.type !== 'beat') return true;
+          return !excludedBeatTypes.has(getBeatInfo(e).beat_type);
+        });
+
         // Apply cutoff and markdown rendering
         if (onlyPreCutoff) {
           filtered = filtered.map(e => {
@@ -839,10 +976,10 @@ order by
               if (info.use_markdown) {
                 const entry = { ...e };
                 if (e.type === 'blogmark') {
-                  const commentary = marked.parse(info.commentary || '');
-                  entry.html = `<p><strong>Link</strong> ${info.created} <a href="${info.link_url}">${info.link_title}</a>:</p>${commentary}`;
+                  const commentary = renderMarkdown(info.commentary);
+                  entry.html = `<p><strong>Link</strong> ${info.created} <a href="${info.link_url}">${escapeHtml(info.link_title)}</a>:</p>${commentary}`;
                 } else if (e.type === 'note') {
-                  const commentary = marked.parse(info.commentary || '');
+                  const commentary = renderMarkdown(info.commentary);
                   entry.html = `<p><strong>Note</strong> <a href="${e.url}">${info.created}</a></p>${commentary}`;
                 }
                 return entry;
@@ -852,7 +989,7 @@ order by
             if (e.type === 'quotation' && e.json !== 'null') {
               const info = typeof e.json === 'string' ? JSON.parse(e.json) : e.json;
               const entry = { ...e };
-              const quotationHtml = marked.parse(info.quotation || '');
+              const quotationHtml = renderMarkdown(info.quotation);
               const contextHtml = info.context ? ', ' + marked.parseInline(info.context) : '';
               entry.html = `<p><strong>Quote</strong> ${info.created}</p><blockquote>${quotationHtml}</blockquote><p><a href="${info.source_url || '#'}">${info.source}</a>${contextHtml}</p>`;
               return entry;
@@ -882,20 +1019,12 @@ order by
         });
 
         // Always render beat HTML from the JSON payload (matches the Atom everything feed)
-        const beatTypeDisplay = {
-          release: 'Release',
-          til: 'TIL',
-          til_update: 'TIL updated',
-          research: 'Research',
-          tool: 'Tool',
-          museum: 'Museum'
-        };
         filtered = filtered.map(e => {
           if (e.type === 'beat' && e.json !== 'null') {
-            const info = typeof e.json === 'string' ? JSON.parse(e.json) : e.json;
+            const info = getBeatInfo(e);
             const entry = { ...e };
             const label = beatTypeDisplay[info.beat_type] || info.beat_type;
-            const noteHtml = info.note ? marked.parse(info.note) : '';
+            const noteHtml = info.note ? renderMarkdown(info.note) : '';
             entry.html = `<p><strong>${label}:</strong> <a href="${info.url}">${info.title}</a></p>${noteHtml}`;
             return entry;
           }
@@ -1266,9 +1395,7 @@ order by
         if (chapters.length) {
           extras.push(`${chapters.length} guide chapter${chapters.length > 1 ? 's' : ''}`);
         }
-        if (beats.length) {
-          extras.push(`${beats.length} beat${beats.length > 1 ? 's' : ''}`);
-        }
+        extras.push(...getBeatSummaryItems());
         if (extras.length) {
           headerHtml += `<p>Plus ${extras.join(' and ')}</p>`;
         }
@@ -1291,7 +1418,8 @@ order by
 
         // Clean newsletter HTML (for copying)
         const footerHtml = generateSponsorMessage();
-        let html = headerHtml + sortedContent.map(c => c.html + '<hr>').join('\n') + footerHtml;
+        const topSponsorHtml = renderTopSponsorMessage();
+        let html = headerHtml + topSponsorHtml + sortedContent.map(c => c.html + '<hr>').join('\n') + footerHtml;
         newsletterHTML = applyReplacements(html);
         htmlLengthEl.textContent = `Length of HTML: ${newsletterHTML.length.toLocaleString()} characters`;
 
@@ -1303,7 +1431,7 @@ order by
           }
           return itemHtml + '<hr>';
         }).join('\n');
-        previewEl.innerHTML = applyReplacements(headerHtml) + previewContentHtml + applyReplacements(footerHtml);
+        previewEl.innerHTML = applyReplacements(headerHtml + topSponsorHtml) + previewContentHtml + applyReplacements(footerHtml);
 
         // Check for long URLs and display warnings
         checkLongUrls(newsletterHTML);
@@ -1468,8 +1596,19 @@ order by
 
       linksSearch.addEventListener('input', renderLinksTable);
 
+      sponsorMessageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveSponsorMessage();
+        generateNewsletter();
+      });
+      sponsorMessageInput.addEventListener('input', () => {
+        saveSponsorMessage();
+        generateNewsletter();
+      });
+
       // Initialize
       async function init() {
+        restoreSponsorMessage();
         showStatus('Loading...');
         try {
           // Fetch RSS first to get previous links and days since

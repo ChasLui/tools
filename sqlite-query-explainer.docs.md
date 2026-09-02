@@ -1,0 +1,3 @@
+View Mozilla Bugzilla bug reports and run SQL queries against a SQLite database to see exactly how SQLite executes them. The tool annotates every line of `EXPLAIN QUERY PLAN` and low-level `EXPLAIN` bytecode output with plain-English descriptions of what the query planner and virtual machine are doing. Load the built-in example database with 170,000+ rows across multiple tables with indexes and a view, or open your own SQLite file, then write queries with clickable bytecode instruction links and hoverable register highlighting. Powered by Python's `sqlite3` module running in Pyodide, so all data stays in your browser.
+
+<!-- Generated from commit: b82441e63ff0b1fc8a1942aaf5ba3dda6d6ebcdd -->

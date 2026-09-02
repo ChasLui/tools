@@ -1,0 +1,3 @@
+View Mozilla Bugzilla bug reports and identify text containing clichéd phrases commonly found in language model outputs. Paste text into the analyzer or load it from a URL via the Jina Reader proxy to detect patterns including "no X, no Y" chains, "sit with that," "you already know," and phrases from Wikipedia's Signs of AI writing guide. The tool highlights flagged sentences with toggleable pattern detection, match navigation, and counts chain items with badges, running entirely in your browser with localStorage support.
+
+<!-- Generated from commit: aabd3c5b1258a20ea2d512269ea72a7f083b07a6 -->

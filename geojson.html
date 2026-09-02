@@ -1,0 +1,1280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GeoJSON Map Viewer</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+      :root {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #172a35;
+        background: #eef2f3;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      button,
+      textarea,
+      input,
+      select {
+        font: inherit;
+      }
+      main {
+        height: 100vh;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      header {
+        max-width: 1440px;
+        width: 100%;
+        margin: 0 auto;
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .eyebrow {
+        margin: 0 0 0.25rem;
+        color: #376272;
+        font:
+          700 0.72rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(1.7rem, 3vw, 2.4rem);
+        letter-spacing: -0.04em;
+      }
+      .privacy,
+      .hint,
+      .status {
+        margin: 0;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        color: #4c626c;
+      }
+      /* The workspace fills the viewport and the editor scrolls inside it,
+         so adding shapes never changes the map's size (and therefore the
+         "Match map" export size). */
+      .workspace {
+        flex: 1;
+        max-width: 1440px;
+        width: 100%;
+        min-height: 560px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(320px, 0.78fr) minmax(0, 1.7fr);
+        grid-template-rows: minmax(0, 1fr);
+        overflow: hidden;
+        border: 1px solid #b7c8cc;
+        border-radius: 0.8rem;
+        background: #fff;
+        box-shadow: 0 15px 45px #28445119;
+      }
+      .editor {
+        min-height: 0;
+        overflow-y: auto;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        border-right: 1px solid #c8d5d8;
+      }
+      .shapes,
+      .shape,
+      .editor > * {
+        flex-shrink: 0;
+      }
+      label {
+        font-size: 0.82rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-weight: 700;
+        color: #315460;
+      }
+      textarea {
+        width: 100%;
+        min-height: 170px;
+        resize: vertical;
+        padding: 1rem;
+        border: 1px solid #b7c8cc;
+        border-radius: 0.4rem;
+        background: #f8fbfb;
+        color: #152d38;
+        font:
+          0.85rem/1.55 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        outline-color: #028fc3;
+      }
+      fieldset {
+        border: 1px solid #c8d5d8;
+        border-radius: 0.4rem;
+        padding: 0.75rem;
+        display: grid;
+        gap: 0.7rem;
+      }
+      legend {
+        padding: 0 0.25rem;
+        color: #315460;
+        font:
+          700 0.76rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+      }
+      .shapes {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+      .shape {
+        --shape-color: #028fc3;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.6rem;
+        min-width: 0;
+        padding: 0.75rem;
+        border: 1px solid #c8d5d8;
+        border-left: 5px solid var(--shape-color);
+        border-radius: 0.4rem;
+        background: #fff;
+      }
+      .shape-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        min-width: 0;
+      }
+      .shape-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      button.remove,
+      button.load-url {
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      button.remove {
+        padding: 0.32rem 0.6rem;
+        font-size: 0.76rem;
+      }
+      fieldset label,
+      label.style-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
+        gap: 0.6rem;
+        min-width: 0;
+        color: #315460;
+        font:
+          600 0.85rem/1 Arial,
+          sans-serif;
+      }
+      label.style-row {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+      }
+      label.style-row > span {
+        min-width: 5.5rem;
+      }
+      label.url-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+        color: #315460;
+        font:
+          600 0.85rem/1 Arial,
+          sans-serif;
+      }
+      input[type="url"] {
+        flex: 1;
+        min-width: 0;
+        padding: 0.42rem 0.5rem;
+        border: 1px solid #9fb5bb;
+        border-radius: 0.25rem;
+        background: #fff;
+        color: #152d38;
+        font-size: 0.82rem;
+      }
+      input[type="url"]:focus {
+        outline-color: #028fc3;
+      }
+      button.load-url {
+        padding: 0.42rem 0.7rem;
+        font-size: 0.78rem;
+      }
+      textarea[readonly] {
+        background: #eef2f3;
+        color: #4c626c;
+      }
+      input[type="color"] {
+        width: 2rem;
+        height: 1.75rem;
+        justify-self: end;
+        padding: 0.12rem;
+        border: 1px solid #9fb5bb;
+        border-radius: 0.25rem;
+        background: #fff;
+        cursor: pointer;
+      }
+      input[type="range"] {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        accent-color: #028fc3;
+        cursor: pointer;
+      }
+      output {
+        min-width: 3.4rem;
+        text-align: right;
+        color: #315460;
+        font:
+          0.78rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+      }
+      .actions {
+        display: flex;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+      }
+      button {
+        border: 0;
+        border-radius: 0.35rem;
+        padding: 0.68rem 0.9rem;
+        background: #028fc3;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0579a7;
+      }
+      button.quiet {
+        background: #e4edef;
+        color: #254652;
+      }
+      button.quiet:hover {
+        background: #cfdde0;
+      }
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+      .status {
+        min-height: 2.5em;
+        color: #315460;
+      }
+      .hint {
+        border-top: 1px solid #dbe4e6;
+        padding-top: 0.8rem;
+      }
+      .map-panel {
+        min-height: 0;
+        background: #dce8e5;
+      }
+      .map {
+        width: 100%;
+        height: 100%;
+      }
+      select {
+        padding: 0.35rem 0.5rem;
+        border: 1px solid #9fb5bb;
+        border-radius: 0.25rem;
+        background: #fff;
+        color: #152d38;
+        font-size: 0.85rem;
+      }
+      .size-inputs {
+        grid-column: 2 / 4;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: #4c626c;
+      }
+      input[type="number"] {
+        width: 5.2rem;
+        padding: 0.35rem 0.5rem;
+        border: 1px solid #9fb5bb;
+        border-radius: 0.25rem;
+        background: #fff;
+        color: #152d38;
+        font-size: 0.85rem;
+      }
+      .export-note {
+        margin: 0;
+        font-size: 0.78rem;
+        line-height: 1.4;
+        font-weight: 400;
+        color: #4c626c;
+      }
+      a.button {
+        display: inline-block;
+        border-radius: 0.35rem;
+        padding: 0.68rem 0.9rem;
+        background: #028fc3;
+        color: #fff;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      a.button:hover {
+        background: #0579a7;
+      }
+      dialog {
+        width: min(96vw, 1100px);
+        max-height: 94vh;
+        padding: 1.25rem;
+        border: 1px solid #b7c8cc;
+        border-radius: 0.8rem;
+        background: #fff;
+        color: #172a35;
+        box-shadow: 0 25px 70px #28445140;
+        display: none;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+      dialog[open] {
+        display: flex;
+      }
+      dialog::backdrop {
+        background: #17283588;
+      }
+      .preview-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .preview-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        letter-spacing: -0.02em;
+      }
+      .preview-meta {
+        flex: 1;
+        margin: 0;
+        color: #4c626c;
+        font:
+          0.78rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+      }
+      .preview-image {
+        overflow: auto;
+        max-height: 70vh;
+        padding: 0.75rem;
+        border: 1px solid #c8d5d8;
+        border-radius: 0.4rem;
+        background: repeating-conic-gradient(#e4edef 0 25%, #f4f8f9 0 50%) 0 0 /
+          20px 20px;
+      }
+      .preview-image img {
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: calc(70vh - 1.5rem);
+        margin: 0 auto;
+        box-shadow: 0 6px 20px #28445133;
+      }
+      .leaflet-popup-content pre {
+        margin: 0;
+        max-width: 260px;
+        white-space: pre-wrap;
+      }
+      @media (max-width: 800px) {
+        main {
+          height: auto;
+          min-height: 100vh;
+          padding: 0.75rem;
+        }
+        header {
+          align-items: start;
+          flex-direction: column;
+        }
+        .workspace {
+          min-height: auto;
+          grid-template-columns: 1fr;
+          grid-template-rows: auto auto;
+        }
+        .editor {
+          overflow-y: visible;
+          border-right: 0;
+          border-bottom: 1px solid #c8d5d8;
+        }
+        textarea {
+          min-height: 280px;
+        }
+        .map,
+        .map-panel {
+          min-height: 440px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">OpenStreetMap overlay</p>
+          <h1>GeoJSON Map Viewer</h1>
+        </div>
+        <p class="privacy">Your GeoJSON stays in this browser.</p>
+      </header>
+      <section class="workspace">
+        <aside class="editor">
+          <div class="shapes" id="shapes"></div>
+          <template id="shape-template">
+            <section class="shape">
+              <div class="shape-header">
+                <label class="shape-title">Shape 1</label>
+                <button class="quiet remove" type="button">Remove</button>
+              </div>
+              <label class="url-row"
+                ><span>URL</span
+                ><input
+                  class="source-url"
+                  type="url"
+                  spellcheck="false"
+                  placeholder="https://gist.github.com/… or a raw GeoJSON URL"
+                /><button class="quiet load-url" type="button">
+                  Load
+                </button></label
+              >
+              <textarea
+                spellcheck="false"
+                placeholder="Paste a Feature, FeatureCollection, or geometry here, or load one from a URL above…"
+              ></textarea>
+              <label class="style-row"
+                ><span>Fill colour</span
+                ><input
+                  class="fill-color"
+                  type="color"
+                  value="#028FC3"
+                /><output class="color-value">#028FC3</output></label
+              >
+              <label class="style-row"
+                ><span>Opacity</span
+                ><input
+                  class="fill-opacity"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="50"
+                /><output class="opacity-value">50%</output></label
+              >
+            </section>
+          </template>
+          <div class="actions">
+            <button id="render">Render map</button
+            ><button class="quiet" id="add-shape">Add shape</button
+            ><button class="quiet" id="example">Load example</button
+            ><button class="quiet" id="clear">Clear</button>
+          </div>
+          <fieldset class="export">
+            <legend>PNG export</legend>
+            <label for="preset"
+              ><span>Size preset</span
+              ><select id="preset">
+                <option value="map" selected>Match map</option>
+                <option value="1200x630">Social card (1200×630)</option>
+                <option value="1920x1080">HD (1920×1080)</option>
+                <option value="1240x1754">A4 portrait at 150 dpi</option>
+                <option value="custom">Custom</option>
+              </select></label
+            >
+            <label for="width"
+              ><span>Size (px)</span
+              ><span class="size-inputs"
+                ><input
+                  id="width"
+                  type="number"
+                  min="100"
+                  max="4096"
+                  step="1" />
+                ×
+                <input
+                  id="height"
+                  type="number"
+                  min="100"
+                  max="4096"
+                  step="1"
+                  aria-label="Height (px)" /></span
+            ></label>
+            <label for="resolution"
+              ><span>Resolution</span
+              ><select id="resolution">
+                <option value="1">1×</option>
+                <option value="2" selected>2× (retina)</option>
+                <option value="3">3×</option>
+                <option value="4">4×</option></select
+              ><output id="resolution-value"></output
+            ></label>
+            <p class="export-note">
+              OpenStreetMap has no retina tiles, so higher resolutions load
+              tiles from deeper zoom levels for sharper detail. Labels stay the
+              same pixel size, so they look smaller in the export. The export is
+              centred on the current map view at the current zoom.
+            </p>
+            <button class="quiet" id="download">Export PNG…</button>
+          </fieldset>
+          <p class="status" id="status" role="status">
+            Paste GeoJSON, then render it.
+          </p>
+          <p class="hint">
+            Supports GeoJSON Geometry, Feature, and FeatureCollection objects.
+            Coordinates use longitude, latitude order. Add more shapes to
+            overlay several GeoJSON objects, each with its own colour and
+            opacity — later shapes are drawn on top. Instead of pasting, load a
+            shape from a GitHub Gist or any JSON URL served with CORS headers;
+            loaded URLs, colours, opacities, the map view, and PNG export
+            settings are saved in this page's URL fragment so the map can be
+            shared and renders automatically when opened.
+          </p>
+        </aside>
+        <section class="map-panel" aria-label="Map">
+          <div class="map" id="map"></div>
+        </section>
+      </section>
+    </main>
+    <dialog id="preview" aria-labelledby="preview-title">
+      <div class="preview-header">
+        <h2 id="preview-title">PNG preview</h2>
+        <p class="preview-meta" id="preview-meta"></p>
+        <button class="quiet" id="preview-close" type="button">Close</button>
+      </div>
+      <div class="preview-image">
+        <img id="preview-img" alt="Exported map preview" />
+      </div>
+      <div class="actions">
+        <a id="preview-download" class="button" download="geojson-map.png"
+          >Download PNG</a
+        ><button class="quiet" id="preview-copy" type="button">
+          Copy image
+        </button>
+      </div>
+      <p class="status" id="preview-status" role="status"></p>
+    </dialog>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const examples = [
+        {
+          color: "#028FC3",
+          opacity: 50,
+          value: `{"type":"Feature","properties":{"name":"Example polygon"},"geometry":{"type":"Polygon","coordinates":[[[-122.43,37.77],[-122.40,37.77],[-122.40,37.79],[-122.43,37.79],[-122.43,37.77]]]}}`,
+        },
+        {
+          color: "#E4572E",
+          opacity: 35,
+          value: `{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"Overlapping polygon"},"geometry":{"type":"Polygon","coordinates":[[[-122.415,37.76],[-122.385,37.76],[-122.385,37.78],[-122.415,37.78],[-122.415,37.76]]]}},{"type":"Feature","properties":{"name":"Example route"},"geometry":{"type":"LineString","coordinates":[[-122.45,37.765],[-122.435,37.775],[-122.42,37.8]]}},{"type":"Feature","properties":{"name":"Example point"},"geometry":{"type":"Point","coordinates":[-122.445,37.785]}}]}`,
+        },
+      ];
+      const palette = [
+        "#028FC3",
+        "#E4572E",
+        "#2E8B57",
+        "#8E44AD",
+        "#F39C12",
+        "#C0392B",
+      ];
+      const shapesContainer = document.querySelector("#shapes"),
+        shapeTemplate = document.querySelector("#shape-template"),
+        status = document.querySelector("#status"),
+        download = document.querySelector("#download"),
+        presetInput = document.querySelector("#preset"),
+        widthInput = document.querySelector("#width"),
+        heightInput = document.querySelector("#height"),
+        resolutionInput = document.querySelector("#resolution"),
+        resolutionValue = document.querySelector("#resolution-value"),
+        preview = document.querySelector("#preview"),
+        previewImg = document.querySelector("#preview-img"),
+        previewMeta = document.querySelector("#preview-meta"),
+        previewDownload = document.querySelector("#preview-download"),
+        previewCopy = document.querySelector("#preview-copy"),
+        previewStatus = document.querySelector("#preview-status");
+      const maxTileZoom = 19,
+        maxOutputSide = 8192;
+      let previewBlob = null,
+        previewUrl = null;
+      const map = L.map("map", { zoomControl: false }).setView(
+        [37.77, -122.42],
+        12,
+      );
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+      }).addTo(map);
+      // Each shape is an independent GeoJSON document with its own colour and
+      // opacity. Shapes are drawn in list order, so later shapes sit on top.
+      const shapes = [];
+      let shapeCount = 0;
+      function nextColor() {
+        const used = new Set(
+          shapes.map((shape) => shape.colorInput.value.toUpperCase()),
+        );
+        return (
+          palette.find((color) => !used.has(color)) ||
+          palette[shapes.length % palette.length]
+        );
+      }
+      function addShape({ value = "", color, opacity = 50, url = "" } = {}) {
+        const element = shapeTemplate.content.firstElementChild.cloneNode(true),
+          id = `shape-${++shapeCount}-geojson`;
+        const shape = {
+          element,
+          title: element.querySelector(".shape-title"),
+          remove: element.querySelector(".remove"),
+          source: element.querySelector("textarea"),
+          urlInput: element.querySelector(".source-url"),
+          loadButton: element.querySelector(".load-url"),
+          // The URL whose contents currently fill the textarea, if any.
+          url: null,
+          colorInput: element.querySelector(".fill-color"),
+          opacityInput: element.querySelector(".fill-opacity"),
+          colorValue: element.querySelector(".color-value"),
+          opacityValue: element.querySelector(".opacity-value"),
+          layer: null,
+        };
+        shape.source.id = id;
+        shape.title.htmlFor = id;
+        shape.source.value = value;
+        shape.colorInput.value = color || nextColor();
+        shape.opacityInput.value = opacity;
+        shape.urlInput.value = url;
+        shape.colorInput.addEventListener("input", () => {
+          updateStyle(shape);
+          updateFragment();
+        });
+        shape.opacityInput.addEventListener("input", () => {
+          updateStyle(shape);
+          updateFragment();
+        });
+        shape.remove.addEventListener("click", () => removeShape(shape));
+        shape.loadButton.addEventListener("click", async () => {
+          const loaded = await loadShapeUrl(shape);
+          if (loaded) render();
+        });
+        shape.urlInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            shape.loadButton.click();
+          }
+        });
+        // Clearing the URL hands the textarea back to manual editing.
+        shape.urlInput.addEventListener("input", () => {
+          if (!shape.urlInput.value.trim() && shape.url) {
+            shape.url = null;
+            shape.source.readOnly = false;
+            updateFragment();
+          }
+        });
+        shapes.push(shape);
+        shapesContainer.append(element);
+        updateStyle(shape);
+        renumberShapes();
+        return shape;
+      }
+      function removeShape(shape) {
+        if (shape.layer) map.removeLayer(shape.layer);
+        shape.element.remove();
+        shapes.splice(shapes.indexOf(shape), 1);
+        renumberShapes();
+        updateFragment();
+        setStatus("Shape removed.");
+      }
+      // Gist pages are resolved through the GitHub API, which sends CORS
+      // headers; anything else is fetched directly and must do the same.
+      const gistPattern =
+        /^https?:\/\/gist\.github\.com\/(?:[^/]+\/)?([0-9a-f]+)/i;
+      function normalizeUrl(raw) {
+        let parsed;
+        try {
+          parsed = new URL(raw.trim());
+        } catch {
+          throw new Error("enter a valid URL.");
+        }
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+          throw new Error("only http and https URLs are supported.");
+        return parsed.href;
+      }
+      async function fetchGeojson(url) {
+        const gist = gistPattern.exec(url);
+        if (gist) {
+          const response = await fetch(
+            `https://api.github.com/gists/${gist[1]}`,
+          );
+          if (!response.ok)
+            throw new Error(`Gist API returned ${response.status}.`);
+          const files = Object.values((await response.json()).files || {});
+          if (!files.length) throw new Error("the Gist contains no files.");
+          const file =
+            files.find((f) => /\.(geo)?json$/i.test(f.filename)) || files[0];
+          // The API truncates large files, so fall back to the raw URL.
+          if (!file.truncated) return file.content;
+          url = file.raw_url;
+        }
+        const response = await fetch(url);
+        if (!response.ok)
+          throw new Error(`the server returned ${response.status}.`);
+        return await response.text();
+      }
+      // Fills a shape's textarea from its URL field. Resolves to true when the
+      // shape loaded, false when it failed (the status explains why).
+      async function loadShapeUrl(shape) {
+        const index = shapes.indexOf(shape) + 1;
+        let url;
+        try {
+          url = normalizeUrl(shape.urlInput.value);
+        } catch (error) {
+          setStatus(`Shape ${index}: ${error.message}`);
+          return false;
+        }
+        shape.loadButton.disabled = true;
+        shape.loadButton.textContent = "Loading…";
+        setStatus(`Loading shape ${index} from ${url}…`);
+        try {
+          const text = await fetchGeojson(url);
+          shape.source.value = text;
+          shape.source.readOnly = true;
+          shape.url = url;
+          shape.urlInput.value = url;
+          updateFragment();
+          setStatus(`Loaded shape ${index} from ${url}.`);
+          return true;
+        } catch (error) {
+          setStatus(`Shape ${index} could not be loaded — ${error.message}`);
+          return false;
+        } finally {
+          shape.loadButton.disabled = false;
+          shape.loadButton.textContent = "Load";
+        }
+      }
+      // Shapes loaded from URLs are recorded in the fragment along with
+      // their colour and opacity and the PNG export settings, so the page
+      // can be shared as a link. Pasted GeoJSON is never written to the URL.
+      let restoringFragment = false;
+      function updateFragment() {
+        if (restoringFragment) return;
+        const params = new URLSearchParams();
+        shapes
+          .filter((shape) => shape.url)
+          .forEach((shape) => {
+            params.append("url", shape.url);
+            params.append("color", shape.colorInput.value.toUpperCase());
+            params.append("opacity", shape.opacityInput.value);
+          });
+        const target = params.has("url")
+          ? location.pathname + location.search + "#" + serializeExport(params)
+          : location.pathname + location.search;
+        if (location.href !== new URL(target, location.href).href)
+          history.replaceState(null, "", target);
+      }
+      function serializeExport(params) {
+        params.set("preset", presetInput.value);
+        if (presetInput.value === "custom") {
+          params.set("width", widthInput.value);
+          params.set("height", heightInput.value);
+        }
+        params.set("resolution", resolutionInput.value);
+        const center = map.getCenter();
+        params.set("lat", center.lat.toFixed(5));
+        params.set("lng", center.lng.toFixed(5));
+        params.set("zoom", String(Math.round(map.getZoom() * 100) / 100));
+        return params.toString();
+      }
+      function viewFromParams(params) {
+        const lat = Number(params.get("lat")),
+          lng = Number(params.get("lng")),
+          zoom = Number(params.get("zoom"));
+        if (!params.has("lat") || !params.has("lng") || !params.has("zoom"))
+          return null;
+        if (
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lng) ||
+          !Number.isFinite(zoom) ||
+          Math.abs(lat) > 90
+        )
+          return null;
+        return { center: [lat, lng], zoom };
+      }
+      async function restoreFragment() {
+        const params = new URLSearchParams(location.hash.slice(1)),
+          urls = params.getAll("url");
+        if (!urls.length) return false;
+        const colors = params.getAll("color"),
+          opacities = params.getAll("opacity");
+        restoringFragment = true;
+        removeAllShapes();
+        urls.forEach((url, i) => {
+          const opacity = Number(opacities[i]);
+          addShape({
+            url,
+            color: /^#[0-9a-f]{6}$/i.test(colors[i] || "")
+              ? colors[i]
+              : undefined,
+            opacity: Number.isFinite(opacity)
+              ? Math.min(100, Math.max(0, opacity))
+              : 50,
+          });
+        });
+        const preset = params.get("preset");
+        if ([...presetInput.options].some((o) => o.value === preset)) {
+          presetInput.value = preset;
+          if (preset === "custom") {
+            widthInput.value = params.get("width") || widthInput.value;
+            heightInput.value = params.get("height") || heightInput.value;
+            updateReadout();
+          } else applyPreset();
+        }
+        const resolution = params.get("resolution");
+        if ([...resolutionInput.options].some((o) => o.value === resolution)) {
+          resolutionInput.value = resolution;
+          updateReadout();
+        }
+        const view = viewFromParams(params);
+        if (view) map.setView(view.center, view.zoom, { animate: false });
+        restoringFragment = false;
+        const results = await Promise.all(shapes.map(loadShapeUrl));
+        // A saved view wins over fitting the shapes, so the export frame
+        // matches what was shared.
+        if (results.some(Boolean)) render({ fit: !view });
+        if (view) map.setView(view.center, view.zoom, { animate: false });
+        return true;
+      }
+      function removeAllShapes() {
+        shapes.slice().forEach((shape) => {
+          if (shape.layer) map.removeLayer(shape.layer);
+          shape.element.remove();
+        });
+        shapes.length = 0;
+      }
+      function renumberShapes() {
+        shapes.forEach((shape, i) => {
+          shape.title.textContent = `Shape ${i + 1}`;
+          shape.remove.disabled = shapes.length === 1;
+        });
+      }
+      function style(shape) {
+        return {
+          color: shape.colorInput.value,
+          weight: 3,
+          fillColor: shape.colorInput.value,
+          fillOpacity: Number(shape.opacityInput.value) / 100,
+        };
+      }
+      function setStatus(text) {
+        status.textContent = text;
+      }
+      // Parses every non-empty shape, throwing an error that names the shape
+      // whose GeoJSON is invalid.
+      function parseShapes() {
+        const parsed = [];
+        shapes.forEach((shape, i) => {
+          const text = shape.source.value.trim();
+          if (!text) return;
+          try {
+            parsed.push({ shape, geojson: JSON.parse(text) });
+          } catch (error) {
+            throw new Error(`Shape ${i + 1}: ${error.message}`);
+          }
+        });
+        return parsed;
+      }
+      function render({ fit = true } = {}) {
+        let parsed;
+        try {
+          parsed = parseShapes();
+        } catch (error) {
+          setStatus("Could not parse GeoJSON — " + error.message);
+          return;
+        }
+        shapes.forEach((shape) => {
+          if (shape.layer) map.removeLayer(shape.layer);
+          shape.layer = null;
+        });
+        if (!parsed.length) {
+          setStatus("Paste GeoJSON into at least one shape, then render it.");
+          return;
+        }
+        const bounds = L.latLngBounds([]);
+        try {
+          parsed.forEach(({ shape, geojson }) => {
+            shape.layer = L.geoJSON(geojson, {
+              style: () => style(shape),
+              pointToLayer: (_, latlng) =>
+                L.circleMarker(latlng, { radius: 7, ...style(shape) }),
+              onEachFeature: (feature, featureLayer) => {
+                if (
+                  feature.properties &&
+                  Object.keys(feature.properties).length
+                )
+                  featureLayer.bindPopup(
+                    "<pre>" +
+                      escapeHtml(JSON.stringify(feature.properties, null, 2)) +
+                      "</pre>",
+                  );
+              },
+            }).addTo(map);
+            bounds.extend(shape.layer.getBounds());
+          });
+        } catch (error) {
+          setStatus("Could not render GeoJSON: " + error.message);
+          return;
+        }
+        if (fit && bounds.isValid()) map.fitBounds(bounds.pad(0.12));
+        setStatus(
+          `Rendered ${parsed.length} shape${parsed.length === 1 ? "" : "s"}. Click a feature to inspect its properties.`,
+        );
+      }
+      function updateStyle(shape) {
+        shape.colorValue.textContent = shape.colorInput.value.toUpperCase();
+        shape.opacityValue.textContent = shape.opacityInput.value + "%";
+        shape.element.style.setProperty(
+          "--shape-color",
+          shape.colorInput.value,
+        );
+        if (shape.layer) shape.layer.setStyle(style(shape));
+      }
+      document.querySelector("#render").addEventListener("click", render);
+      document.querySelector("#add-shape").addEventListener("click", () => {
+        const shape = addShape();
+        shape.source.focus();
+        setStatus(`Shape ${shapes.length} added — paste GeoJSON into it.`);
+      });
+      document.querySelector("#example").addEventListener("click", () => {
+        removeAllShapes();
+        examples.forEach(addShape);
+        updateFragment();
+        setStatus("Example loaded with two shapes — render when ready.");
+      });
+      document.querySelector("#clear").addEventListener("click", () => {
+        removeAllShapes();
+        addShape();
+        updateFragment();
+        setStatus("Cleared.");
+      });
+      // The editor grows as shapes are added, which resizes the map beside it.
+      if (window.ResizeObserver)
+        new ResizeObserver(() => map.invalidateSize()).observe(
+          document.querySelector(".map-panel"),
+        );
+      function exportSize() {
+        const clamp = (input) =>
+          Math.min(
+            Number(input.max),
+            Math.max(Number(input.min), Math.round(Number(input.value) || 0)),
+          );
+        return { x: clamp(widthInput), y: clamp(heightInput) };
+      }
+      function updateReadout() {
+        const size = exportSize(),
+          scale = Number(resolutionInput.value);
+        resolutionValue.textContent = `${size.x * scale}×${size.y * scale}`;
+      }
+      function applyPreset() {
+        const value = presetInput.value;
+        if (value === "custom") return;
+        const size =
+          value === "map"
+            ? map.getSize()
+            : (([x, y]) => ({ x: Number(x), y: Number(y) }))(value.split("x"));
+        widthInput.value = size.x;
+        heightInput.value = size.y;
+        updateReadout();
+      }
+      presetInput.addEventListener("change", () => {
+        applyPreset();
+        updateFragment();
+      });
+      [widthInput, heightInput].forEach((input) =>
+        input.addEventListener("input", () => {
+          presetInput.value = "custom";
+          updateReadout();
+          updateFragment();
+        }),
+      );
+      resolutionInput.addEventListener("change", () => {
+        updateReadout();
+        updateFragment();
+      });
+      map.on("resize", () => {
+        if (presetInput.value === "map") applyPreset();
+      });
+      map.on("moveend", updateFragment);
+      applyPreset();
+      // Start from the fragment when it names URLs, otherwise with one empty
+      // shape. Editing the fragment by hand (or navigating back to an earlier
+      // one) reloads the page state the same way.
+      restoreFragment().then((restored) => {
+        if (!restored) addShape();
+      });
+      window.addEventListener("hashchange", () => {
+        restoreFragment().then((restored) => {
+          if (!restored && !shapes.length) addShape();
+        });
+      });
+      download.addEventListener("click", exportPng);
+      async function exportPng() {
+        let parsed;
+        try {
+          parsed = parseShapes();
+        } catch (error) {
+          setStatus("Could not export PNG — " + error.message);
+          return;
+        }
+        if (!parsed.length) {
+          setStatus(
+            "Paste GeoJSON into at least one shape before exporting a PNG.",
+          );
+          return;
+        }
+        download.disabled = true;
+        download.textContent = "Preparing PNG…";
+        setStatus("Preparing PNG…");
+        try {
+          const size = exportSize(),
+            scale = Number(resolutionInput.value);
+          widthInput.value = size.x;
+          heightInput.value = size.y;
+          if (Math.max(size.x, size.y) * scale > maxOutputSide)
+            throw new Error(
+              `${size.x * scale}×${size.y * scale} is too large — keep each side at or below ${maxOutputSide} px.`,
+            );
+          const canvas = document.createElement("canvas");
+          canvas.width = size.x * scale;
+          canvas.height = size.y * scale;
+          const context = canvas.getContext("2d");
+          context.scale(scale, scale);
+          // The export frame is centred on the current view at the current
+          // zoom, but sized independently of the on-screen map.
+          const zoom = map.getZoom(),
+            origin = map
+              .project(map.getCenter(), zoom)
+              .subtract([size.x / 2, size.y / 2])
+              .round();
+          // OpenStreetMap does not serve @2x tiles, so for higher resolutions
+          // fetch tiles from a deeper zoom level and draw them smaller.
+          const zoomOffset = Math.max(
+              0,
+              Math.min(Math.ceil(Math.log2(scale)), maxTileZoom - zoom),
+            ),
+            tileZoom = zoom + zoomOffset,
+            tileSize = 256 / 2 ** zoomOffset,
+            worldSize = 2 ** tileZoom,
+            firstX = Math.floor(origin.x / tileSize),
+            lastX = Math.floor((origin.x + size.x - 1) / tileSize),
+            firstY = Math.floor(origin.y / tileSize),
+            lastY = Math.floor((origin.y + size.y - 1) / tileSize);
+          const tiles = [];
+          for (let x = firstX; x <= lastX; x++)
+            for (let y = firstY; y <= lastY; y++) {
+              if (y < 0 || y >= worldSize) continue;
+              const wrappedX = ((x % worldSize) + worldSize) % worldSize;
+              tiles.push(
+                loadTile(
+                  `https://${["a", "b", "c"][(wrappedX + y) % 3]}.tile.openstreetmap.org/${tileZoom}/${wrappedX}/${y}.png`,
+                ).then((image) =>
+                  context.drawImage(
+                    image,
+                    x * tileSize - origin.x,
+                    y * tileSize - origin.y,
+                    tileSize,
+                    tileSize,
+                  ),
+                ),
+              );
+            }
+          await Promise.all(tiles);
+          parsed.forEach(({ shape, geojson }) =>
+            drawGeojson(context, geojson, zoom, origin, {
+              color: shape.colorInput.value,
+              opacity: Number(shape.opacityInput.value) / 100,
+            }),
+          );
+          drawAttribution(context, size.x, size.y);
+          const blob = await new Promise((resolve, reject) =>
+            canvas.toBlob(
+              (result) =>
+                result
+                  ? resolve(result)
+                  : reject(new Error("Canvas was empty.")),
+              "image/png",
+            ),
+          );
+          showPreview(blob, canvas.width, canvas.height, scale);
+          setStatus("PNG ready — preview, copy, or download it.");
+        } catch (error) {
+          setStatus("Could not export PNG: " + error.message);
+        } finally {
+          download.disabled = false;
+          download.textContent = "Export PNG…";
+        }
+      }
+      function showPreview(blob, width, height, scale) {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewBlob = blob;
+        previewUrl = URL.createObjectURL(blob);
+        previewImg.src = previewUrl;
+        previewMeta.textContent = `${width}×${height} px · ${scale}×`;
+        previewDownload.href = previewUrl;
+        previewDownload.textContent = `Download PNG (${formatSize(blob.size)})`;
+        previewCopy.disabled = !(navigator.clipboard && window.ClipboardItem);
+        previewCopy.textContent = "Copy image";
+        previewStatus.textContent = previewCopy.disabled
+          ? "Copying images to the clipboard is not supported in this browser."
+          : "";
+        preview.showModal();
+      }
+      function formatSize(bytes) {
+        return bytes < 1024 * 1024
+          ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+          : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+      }
+      previewCopy.addEventListener("click", async () => {
+        if (!previewBlob) return;
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": previewBlob }),
+          ]);
+          previewStatus.textContent = "Image copied to the clipboard.";
+        } catch (error) {
+          previewStatus.textContent = "Could not copy image: " + error.message;
+        }
+      });
+      previewDownload.addEventListener("click", () => {
+        previewStatus.textContent =
+          "PNG downloaded with OpenStreetMap attribution.";
+      });
+      document
+        .querySelector("#preview-close")
+        .addEventListener("click", () => preview.close());
+      preview.addEventListener("click", (event) => {
+        if (event.target === preview) preview.close();
+      });
+      preview.addEventListener("close", () => {
+        previewImg.removeAttribute("src");
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = null;
+        previewBlob = null;
+      });
+      function loadTile(url) {
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.crossOrigin = "anonymous";
+          image.onload = () => resolve(image);
+          image.onerror = () =>
+            reject(
+              new Error("OpenStreetMap tiles could not be loaded for export."),
+            );
+          image.src = url;
+        });
+      }
+      function drawGeojson(context, value, zoom, origin, { color, opacity }) {
+        const point = ([longitude, latitude]) =>
+          map.project([latitude, longitude], zoom).subtract(origin);
+        const line = (coordinates) => {
+          context.beginPath();
+          coordinates.forEach((coordinate, i) => {
+            const p = point(coordinate);
+            i ? context.lineTo(p.x, p.y) : context.moveTo(p.x, p.y);
+          });
+          context.strokeStyle = color;
+          context.lineWidth = 3;
+          context.stroke();
+        };
+        const polygon = (rings) => {
+          context.beginPath();
+          rings.forEach((ring) =>
+            ring.forEach((coordinate, i) => {
+              const p = point(coordinate);
+              i ? context.lineTo(p.x, p.y) : context.moveTo(p.x, p.y);
+            }),
+          );
+          context.fillStyle = color;
+          context.globalAlpha = opacity;
+          context.fill("evenodd");
+          context.globalAlpha = 1;
+          context.strokeStyle = color;
+          context.lineWidth = 3;
+          context.stroke();
+        };
+        const marker = (coordinate) => {
+          const p = point(coordinate);
+          context.beginPath();
+          context.arc(p.x, p.y, 7, 0, Math.PI * 2);
+          context.fillStyle = color;
+          context.globalAlpha = opacity;
+          context.fill();
+          context.globalAlpha = 1;
+          context.strokeStyle = color;
+          context.lineWidth = 2;
+          context.stroke();
+        };
+        const geometry = (g) => {
+          if (!g) return;
+          if (g.type === "GeometryCollection")
+            return g.geometries.forEach(geometry);
+          if (g.type === "Point") return marker(g.coordinates);
+          if (g.type === "MultiPoint") return g.coordinates.forEach(marker);
+          if (g.type === "LineString") return line(g.coordinates);
+          if (g.type === "MultiLineString") return g.coordinates.forEach(line);
+          if (g.type === "Polygon") return polygon(g.coordinates);
+          if (g.type === "MultiPolygon") return g.coordinates.forEach(polygon);
+        };
+        if (value.type === "FeatureCollection")
+          value.features.forEach((feature) => geometry(feature.geometry));
+        else if (value.type === "Feature") geometry(value.geometry);
+        else geometry(value);
+      }
+      function drawAttribution(context, width, height) {
+        const text = "© OpenStreetMap contributors",
+          padding = 5;
+        context.font = "12px Arial, sans-serif";
+        const textWidth = context.measureText(text).width,
+          x = width - textWidth - padding * 2 - 7,
+          y = height - 25;
+        context.fillStyle = "rgba(255,255,255,.86)";
+        context.fillRect(x, y, textWidth + padding * 2, 20);
+        context.fillStyle = "#222";
+        context.fillText(text, x + padding, y + 14);
+      }
+      function escapeHtml(value) {
+        return value.replace(
+          /[&<>'"]/g,
+          (char) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              "'": "&#39;",
+              '"': "&quot;",
+            })[char],
+        );
+      }
+    </script>
+  </body>
+</html>

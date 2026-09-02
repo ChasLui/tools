@@ -1,0 +1,1728 @@
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+  margin: 0;
+  background: #fafafa;
+  color: #1a1a1a;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 100vh;
+}
+
+.app.viewer-mode {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app.viewer-mode .editor-pane {
+  display: none;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pane-header {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+  border-bottom: 1px solid #e2e2e2;
+  background: #fff;
+}
+
+.editor-pane {
+  border-right: 1px solid #e2e2e2;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.source-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
+  background: #fff;
+  color: #777;
+  cursor: pointer;
+}
+
+.source-toggle:hover,
+.source-toggle:focus-visible {
+  color: #2563eb;
+  border-color: #bfdbfe;
+  outline: none;
+}
+
+.source-toggle svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
+.app.has-url-content .source-toggle {
+  display: inline-flex;
+}
+
+.app.viewer-mode .source-toggle {
+  opacity: 0.72;
+}
+
+.app.viewer-mode #output {
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.source-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.source-tabs button {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid #e2e2e2;
+  background: #f6f6f6;
+  color: #888;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.source-tabs button.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.url-bar {
+  display: none;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e2e2;
+  background: #fff;
+}
+
+.url-bar.active { display: flex; }
+
+#url-input {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  outline: none;
+}
+
+#url-input:focus { border-color: #2563eb; }
+
+#url-load {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#url-status {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #888;
+  border-bottom: 1px solid #e2e2e2;
+  background: #fff;
+  display: none;
+}
+
+#url-status.active { display: block; }
+#url-status.error { color: #dc2626; }
+
+#input {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 16px;
+  font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  background: #fff;
+}
+
+#output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+  line-height: 1.6;
+}
+
+#output h1, #output h2, #output h3, #output h4 {
+  line-height: 1.25;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+#output h1 { font-size: 2em; border-bottom: 1px solid #e2e2e2; padding-bottom: 0.3em; }
+#output h2 { font-size: 1.5em; border-bottom: 1px solid #e2e2e2; padding-bottom: 0.3em; }
+#output h3 { font-size: 1.25em; }
+
+#output p { margin: 0.8em 0; }
+
+#output code {
+  background: #f0f0f0;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+#output pre {
+  background: #f6f6f6;
+  padding: 14px 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  border: 1px solid #e8e8e8;
+}
+
+#output pre code {
+  background: none;
+  padding: 0;
+}
+
+#output blockquote {
+  margin: 0.8em 0;
+  padding-left: 16px;
+  border-left: 4px solid #ddd;
+  color: #666;
+}
+
+#output table {
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+#output th, #output td {
+  border: 1px solid #ddd;
+  padding: 6px 12px;
+}
+
+#output th { background: #f6f6f6; }
+
+#output a { color: #2563eb; }
+
+#output .header-anchor {
+  margin-left: 0.4em;
+  font-size: 0.75em;
+  font-weight: normal;
+  color: #bbb;
+  text-decoration: none;
+}
+
+#output .header-anchor:hover,
+#output .header-anchor:focus-visible {
+  color: #2563eb;
+}
+
+#output img { max-width: 100%; }
+
+#output hr {
+  border: none;
+  border-top: 1px solid #e2e2e2;
+  margin: 1.5em 0;
+}
+
+@media (max-width: 700px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .app.viewer-mode { grid-template-rows: 1fr; }
+  .editor-pane { border-right: none; border-bottom: 1px solid #e2e2e2; }
+}
+</style>
+
+<div class="app">
+  <div class="pane editor-pane">
+    <div class="pane-header">
+      <span class="source-tabs">
+        <button id="tab-paste" class="active" type="button">Paste</button>
+        <button id="tab-url" type="button">URL</button>
+      </span>
+    </div>
+    <div class="url-bar" id="url-bar">
+      <input id="url-input" type="url" spellcheck="false"
+        placeholder="Raw markdown URL or https://gist.github.com/...">
+      <button id="url-load" type="button">Load</button>
+    </div>
+    <div id="url-status"></div>
+    <textarea id="input" spellcheck="false"></textarea>
+  </div>
+  <div class="pane preview-pane">
+    <div class="pane-header preview-header">
+      <span>Preview</span>
+      <button id="source-toggle" class="source-toggle" type="button"
+        title="Show source" aria-label="Show source" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+          <path d="M9 4v16"></path>
+          <path d="m14 9 3 3-3 3"></path>
+        </svg>
+      </button>
+    </div>
+    <div id="output"></div>
+  </div>
+</div>
+
+<script
+  src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.1/dist/markdown-it.min.js"
+  integrity="sha384-VjNpj0uWy3ya2VFiHXeS6MxjLjWGb1mSZTNAF0xfbZguX+9CXmTkYSmOxEyUWJ9S"
+  crossorigin="anonymous"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/dompurify@3.3.3/dist/purify.min.js"
+  integrity="sha384-pcBjnGbkyKeOXaoFkmJiuR9E08/6gkmus6/Strimnxtl3uk0Hx23v345pWyC/MMr"
+  crossorigin="anonymous"></script>
+
+<script type="module">
+// ---- SVG tab web component ----
+function svgAspectRatio(svg) {
+  let ratio = "1 / 1";
+  const m = svg.match(/viewBox\s*=\s*["']([\d.\s-]+)["']/i);
+  if (m) {
+    const parts = m[1].trim().split(/\s+/).map(Number);
+    if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+      ratio = `${parts[2]} / ${parts[3]}`;
+    }
+  } else {
+    const w = svg.match(/\bwidth\s*=\s*["']?([\d.]+)/i);
+    const h = svg.match(/\bheight\s*=\s*["']?([\d.]+)/i);
+    if (w && h && +h[1] > 0) ratio = `${+w[1]} / ${+h[1]}`;
+  }
+  return ratio;
+}
+
+function svgAspectRatioNumbers(svg) {
+  const [w, h] = svgAspectRatio(svg).split("/").map((part) => parseFloat(part));
+  return w > 0 && h > 0 ? [w, h] : [1, 1];
+}
+
+// Match the datasette-apps sandbox: put a restrictive CSP before any
+// user-controlled markup in srcdoc, and repeat it on the iframe as defense in
+// depth. SVG scripts are not needed, so this is stricter than the app sandbox.
+const svgPreviewCsp = [
+  "default-src 'none'",
+  "script-src 'none'",
+  "style-src 'unsafe-inline'",
+  "img-src data: blob:",
+  "form-action 'none'",
+  "base-uri 'none'"
+].join("; ") + ";";
+
+function svgPreviewDocument(svg) {
+  return `<!doctype html>
+<meta http-equiv="Content-Security-Policy" content="${svgPreviewCsp}">
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #fff;
+}
+svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+</style>
+</head>
+<body>${svg}${"</" + "body>"}
+${"</" + "html>"}`;
+}
+
+function escapeAttribute(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+const htmlAllowedCdns = [
+  "https://cdnjs.cloudflare.com",
+  "cdnjs.cloudflare.com",
+  "https://cdn.jsdelivr.net",
+  "cdn.jsdelivr.net",
+  "https://unpkg.com",
+  "unpkg.com",
+  "https://esm.sh",
+  "esm.sh"
+].join(" ");
+
+const htmlPreviewCsp = [
+  "default-src 'none'",
+  `script-src 'unsafe-inline' 'unsafe-eval' ${htmlAllowedCdns}`,
+  `style-src 'unsafe-inline' ${htmlAllowedCdns}`,
+  `img-src data: blob: ${htmlAllowedCdns}`,
+  `font-src data: ${htmlAllowedCdns}`,
+  `connect-src ${htmlAllowedCdns}`,
+  `media-src ${htmlAllowedCdns}`,
+  "frame-src 'none'",
+  "object-src 'none'",
+  "form-action 'none'",
+  "base-uri 'none'"
+].join("; ") + ";";
+
+function htmlPreviewDocument(html) {
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(htmlPreviewCsp)}">`;
+  const trimmed = (html || "").trimStart();
+  if (/^<!doctype\s+html[^>]*>/i.test(trimmed)) {
+    return trimmed.replace(/^<!doctype\s+html[^>]*>/i, (match) => `${match}\n${meta}`);
+  }
+  return `<!doctype html>\n${meta}\n${html}`;
+}
+
+// ---- Animated SVG detection ----
+// Parse an SMIL clock value ("2s", "150ms", "1.5min", bare seconds) into
+// seconds, or null if it is not a plain clock value (e.g. "click", "0:02").
+function smilClockSeconds(value) {
+  const m = /^\s*(-?\d+(?:\.\d+)?)(h|min|s|ms)?\s*$/.exec(value || "");
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  const unit = m[2];
+  if (unit === "h") return n * 3600;
+  if (unit === "min") return n * 60;
+  if (unit === "ms") return n / 1000;
+  return n;
+}
+
+const cssTimeRe = /(\d+(?:\.\d+)?|\.\d+)\s*(ms|s)\b/gi;
+
+function cssTimesSeconds(value) {
+  const times = [];
+  for (const m of value.matchAll(cssTimeRe)) {
+    times.push(m[2].toLowerCase() === "ms" ? parseFloat(m[1]) / 1000 : parseFloat(m[1]));
+  }
+  return times;
+}
+
+// Inspect SVG source for SMIL or CSS animations. Returns null for a static
+// SVG, otherwise { duration } — a best-effort guess in seconds at how long
+// one loop of the animation takes (null when it could not be determined).
+function detectSvgAnimation(code) {
+  const durations = [];
+  let animated = false;
+
+  let doc = null;
+  try {
+    doc = new DOMParser().parseFromString(code, "image/svg+xml");
+    if (doc.querySelector("parsererror")) doc = null;
+  } catch {
+    doc = null;
+  }
+
+  // SMIL: <animate>, <set>, <animateTransform>, <animateMotion>
+  if (doc) {
+    doc.querySelectorAll("animate, set, animateTransform, animateMotion").forEach((el) => {
+      animated = true;
+      const dur = smilClockSeconds(el.getAttribute("dur"));
+      if (dur === null || dur <= 0) return;
+      const repeatDur = smilClockSeconds(el.getAttribute("repeatDur"));
+      const repeatCountAttr = (el.getAttribute("repeatCount") || "").trim();
+      const repeatCount = /^\d+(\.\d+)?$/.test(repeatCountAttr)
+        ? parseFloat(repeatCountAttr) : null;
+      const begin = smilClockSeconds(el.getAttribute("begin")) || 0;
+      let total;
+      if (repeatDur !== null && repeatDur > 0) {
+        total = Math.max(0, begin) + repeatDur;
+      } else if (repeatCount !== null) {
+        total = Math.max(0, begin) + dur * repeatCount;
+      } else {
+        // Indefinite (or single-shot) repeat: one period is the loop length.
+        total = dur;
+      }
+      durations.push(total);
+    });
+  } else if (/<(animate|set|animateTransform|animateMotion)[\s>]/.test(code)) {
+    animated = true;
+  }
+
+  // CSS animations: require @keyframes plus an animation property.
+  if (/@keyframes\s/i.test(code) && /animation(?:-name|-duration)?\s*:/i.test(code)) {
+    animated = true;
+    for (const m of code.matchAll(/animation-duration\s*:\s*([^;}"']+)/gi)) {
+      durations.push(...cssTimesSeconds(m[1]));
+    }
+    for (const m of code.matchAll(/animation\s*:\s*([^;}"']+)/gi)) {
+      // Each comma-separated layer: first <time> is the duration.
+      for (const layer of m[1].split(",")) {
+        const times = cssTimesSeconds(layer);
+        if (!times.length) continue;
+        const infinite = /\binfinite\b/i.test(layer);
+        const countMatch = /(?:^|\s)(\d+(?:\.\d+)?)(?:\s|$)/.exec(
+          layer.replace(cssTimeRe, " ")
+        );
+        const count = infinite || !countMatch ? 1 : parseFloat(countMatch[1]);
+        const delay = infinite || times.length < 2 ? 0 : times[1];
+        durations.push(delay + times[0] * count);
+      }
+    }
+  }
+
+  if (!animated) return null;
+  const max = Math.max(0, ...durations);
+  return { duration: max > 0 ? Math.min(30, Math.round(max * 100) / 100) : null };
+}
+
+// Produce a copy of the SVG frozen at time t: CSS animations are shifted via
+// a negative animation-delay and paused, SMIL animations via negative begin
+// offsets. Rasterizing the result captures the frame at time t, because SVG
+// images drawn to a canvas render at document time 0.
+function snapshotSvgAtTime(code, t) {
+  const doc = new DOMParser().parseFromString(code, "image/svg+xml");
+  if (doc.querySelector("parsererror")) {
+    throw new Error("SVG could not be parsed");
+  }
+  const svg = doc.documentElement;
+  const style = doc.createElementNS("http://www.w3.org/2000/svg", "style");
+  style.textContent =
+    `*, *::before, *::after { animation-delay: -${t}s !important; ` +
+    "animation-play-state: paused !important; }";
+  svg.insertBefore(style, svg.firstChild);
+  doc.querySelectorAll("animate, set, animateTransform, animateMotion").forEach((el) => {
+    const begin = el.getAttribute("begin");
+    if (!begin || !begin.trim()) {
+      el.setAttribute("begin", `${-t}s`);
+      return;
+    }
+    // Shift each clock value in a begin list; leave event-based begins alone.
+    const shifted = begin.split(";").map((part) => {
+      const seconds = smilClockSeconds(part);
+      return seconds === null ? null : `${seconds - t}s`;
+    });
+    if (shifted.every((part) => part !== null)) {
+      el.setAttribute("begin", shifted.join(";"));
+    }
+  });
+  return new XMLSerializer().serializeToString(svg);
+}
+
+// ---- ffmpeg.wasm (lazy singleton, loaded from jsdelivr on first use) ----
+// The @ffmpeg/ffmpeg wrapper's UMD build cannot start its worker from a CDN
+// (cross-origin worker restrictions), so this drives @ffmpeg/core directly
+// from a small same-origin worker created from a blob URL. The core files are
+// also fetched into blob URLs so importScripts works cross-origin.
+const FFMPEG_CORE_BASE =
+  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+const FFMPEG_DOWNLOAD_MB = 31;
+
+async function fetchAsBlobUrl(url, mimeType) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Fetch of ${url} returned ${res.status}`);
+  const blob = new Blob([await res.arrayBuffer()], { type: mimeType });
+  return URL.createObjectURL(blob);
+}
+
+const ffmpegWorkerSource = `
+let core = null;
+self.onmessage = async (e) => {
+  const msg = e.data;
+  try {
+    let result = null;
+    let transfer = [];
+    if (msg.type === "load") {
+      importScripts(msg.coreURL);
+      core = await self.createFFmpegCore({
+        mainScriptUrlOrBlob: msg.coreURL + "#" +
+          btoa(JSON.stringify({ wasmURL: msg.wasmURL, workerURL: msg.coreURL }))
+      });
+      core.setProgress((p) => self.postMessage({ type: "progress", progress: p.progress }));
+    } else if (msg.type === "writeFile") {
+      core.FS.writeFile(msg.name, msg.data);
+    } else if (msg.type === "run") {
+      core.setTimeout(-1);
+      core.exec(...msg.args);
+      result = core.ret;
+      core.reset();
+    } else if (msg.type === "readFile") {
+      result = core.FS.readFile(msg.name, { encoding: "binary" });
+      transfer = [result.buffer];
+    } else if (msg.type === "deleteFile") {
+      core.FS.unlink(msg.name);
+    }
+    self.postMessage({ id: msg.id, result }, transfer);
+  } catch (err) {
+    self.postMessage({ id: msg.id, error: String((err && err.message) || err) });
+  }
+};
+`;
+
+let ffmpegPromise = null;
+// Generations run one at a time: the worker has a single filesystem.
+let ffmpegJobQueue = Promise.resolve();
+
+function getFfmpeg() {
+  if (!ffmpegPromise) {
+    ffmpegPromise = (async () => {
+      const [coreURL, wasmURL] = await Promise.all([
+        fetchAsBlobUrl(`${FFMPEG_CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
+        fetchAsBlobUrl(`${FFMPEG_CORE_BASE}/ffmpeg-core.wasm`, "application/wasm")
+      ]);
+      const workerUrl = URL.createObjectURL(
+        new Blob([ffmpegWorkerSource], { type: "text/javascript" })
+      );
+      const worker = new Worker(workerUrl);
+      const pending = new Map();
+      let nextId = 0;
+      const handlers = { progress: null };
+      worker.onmessage = (e) => {
+        const msg = e.data;
+        if (msg.type === "progress") {
+          if (handlers.progress) handlers.progress(msg.progress);
+          return;
+        }
+        const entry = pending.get(msg.id);
+        if (!entry) return;
+        pending.delete(msg.id);
+        if (msg.error !== undefined) entry.reject(new Error(msg.error));
+        else entry.resolve(msg.result);
+      };
+      worker.onerror = () => {
+        pending.forEach((entry) => entry.reject(new Error("ffmpeg worker failed")));
+        pending.clear();
+      };
+      const call = (type, data, transfer) =>
+        new Promise((resolve, reject) => {
+          const id = nextId++;
+          pending.set(id, { resolve, reject });
+          worker.postMessage({ id, type, ...data }, transfer || []);
+        });
+      await call("load", { coreURL, wasmURL });
+      return { call, handlers };
+    })();
+    ffmpegPromise.catch(() => {
+      ffmpegPromise = null;
+    });
+  }
+  return ffmpegPromise;
+}
+
+const COPY_ICON_SVG = `<svg class="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+const CHECK_ICON_SVG = `<svg class="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+function copyTextToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  }
+  return Promise.resolve(fallbackCopy(text));
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+  } finally {
+    ta.remove();
+  }
+}
+
+function setupCopyButton(shadow, code) {
+  const copyBtn = shadow.querySelector(".copy-btn");
+  if (!copyBtn) return;
+  let timer = null;
+  copyBtn.addEventListener("click", async () => {
+    await copyTextToClipboard(code);
+    copyBtn.classList.add("copied");
+    copyBtn.innerHTML = `${CHECK_ICON_SVG} <span class="copy-text">Copied!</span>`;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      copyBtn.classList.remove("copied");
+      copyBtn.innerHTML = `${COPY_ICON_SVG} <span class="copy-text">Copy</span>`;
+    }, 1500);
+  });
+}
+
+class SvgBlock extends HTMLElement {
+  connectedCallback() {
+    if (this.shadowRoot) return;
+
+    const code = this.getAttribute("data-svg") || "";
+    const shadow = this.attachShadow({ mode: "open" });
+
+    this._animation = detectSvgAnimation(code);
+    const mp4Tab = this._animation
+      ? '<button data-tab="mp4">MP4</button>'
+      : "";
+    const mp4Panel = this._animation
+      ? `<div class="panel" data-panel="mp4">
+        <div class="mp4-controls">
+          <label>Loop length <input type="number" min="0.1" max="30" step="0.1"> s</label>
+          <button type="button" class="mp4-generate">Generate MP4</button>
+        </div>
+        <div class="mp4-note">Generates a looping H.264 MP4 with ffmpeg.wasm,
+          loaded from jsdelivr the first time this tab is opened
+          (~${FFMPEG_DOWNLOAD_MB} MB, once per page).</div>
+        <div class="image-status" hidden></div>
+        <div class="video-wrap" hidden>
+          <video autoplay muted loop playsinline controls></video>
+        </div>
+        <div class="image-actions" hidden>
+          <button type="button">Download MP4</button>
+        </div>
+      </div>`
+      : "";
+
+    shadow.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          max-width: 100%;
+          margin: 1em 0;
+          border: 1px solid #e2e2e2;
+          border-radius: 8px;
+          overflow: hidden;
+          font-family: Helvetica, Arial, sans-serif;
+        }
+        .tabs {
+          display: flex;
+          border-bottom: 1px solid #e2e2e2;
+          background: #f6f6f6;
+        }
+        .tabs button {
+          font-family: inherit;
+          font-size: 13px;
+          border: none;
+          background: none;
+          padding: 8px 16px;
+          cursor: pointer;
+          color: #666;
+          border-bottom: 2px solid transparent;
+          margin-bottom: -1px;
+        }
+        .tabs button.active {
+          color: #1a1a1a;
+          font-weight: bold;
+          border-bottom-color: #2563eb;
+          background: #fff;
+        }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .svg-wrap {
+          width: 100%;
+          background: #fff;
+          padding: 12px;
+        }
+        .image-wrap {
+          width: 100%;
+          background: #fff;
+          padding: 12px;
+        }
+        .image-wrap img {
+          display: block;
+          width: 100%;
+          height: auto;
+        }
+        .image-actions {
+          padding: 0 12px 12px;
+          background: #fff;
+        }
+        .image-actions button {
+          font-family: inherit;
+          font-size: 13px;
+          border: 1px solid #e2e2e2;
+          border-radius: 6px;
+          background: #f6f6f6;
+          color: #1a1a1a;
+          padding: 6px 14px;
+          cursor: pointer;
+        }
+        .image-actions button:hover {
+          border-color: #2563eb;
+          color: #2563eb;
+        }
+        .image-status {
+          padding: 12px;
+          background: #fff;
+          font-size: 13px;
+          color: #666;
+        }
+        .image-status.error { color: #dc2626; }
+        .mp4-controls {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 10px;
+          padding: 12px;
+          background: #fff;
+        }
+        .mp4-controls label {
+          font-size: 13px;
+          color: #666;
+        }
+        .mp4-controls input {
+          width: 70px;
+          font-family: inherit;
+          font-size: 13px;
+          border: 1px solid #e2e2e2;
+          border-radius: 6px;
+          padding: 5px 8px;
+        }
+        .mp4-controls button {
+          font-family: inherit;
+          font-size: 13px;
+          border: 1px solid #e2e2e2;
+          border-radius: 6px;
+          background: #f6f6f6;
+          color: #1a1a1a;
+          padding: 6px 14px;
+          cursor: pointer;
+        }
+        .mp4-controls button:hover:not(:disabled) {
+          border-color: #2563eb;
+          color: #2563eb;
+        }
+        .mp4-controls button:disabled {
+          opacity: 0.6;
+          cursor: default;
+        }
+        .mp4-note {
+          padding: 0 12px 12px;
+          background: #fff;
+          font-size: 12px;
+          color: #999;
+        }
+        .video-wrap {
+          width: 100%;
+          background: #fff;
+          padding: 0 12px 12px;
+        }
+        .video-wrap video {
+          display: block;
+          width: 100%;
+          height: auto;
+        }
+        iframe {
+          display: block;
+          width: 100%;
+          height: 100%;
+          border: 0;
+          background: #fff;
+        }
+        .code-wrap {
+          position: relative;
+        }
+        pre {
+          margin: 0;
+          padding: 14px 16px;
+          overflow-x: auto;
+          background: #1e1e1e;
+          color: #e8e8e8;
+          font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+        .copy-btn {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-family: inherit;
+          font-size: 12px;
+          color: #bbb;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          padding: 4px 8px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .copy-btn:hover {
+          color: #fff;
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.35);
+        }
+        .copy-btn.copied {
+          color: #22c55e;
+          border-color: #22c55e;
+          background: rgba(34, 197, 94, 0.15);
+        }
+        .copy-btn svg {
+          display: block;
+          flex-shrink: 0;
+        }
+      </style>
+      <div class="tabs">
+        <button class="active" data-tab="render">Rendered</button>
+        <button data-tab="png">PNG</button>
+        <button data-tab="jpeg">JPEG</button>
+        ${mp4Tab}
+        <button data-tab="code">Code</button>
+      </div>
+      <div class="panel active" data-panel="render">
+        <div class="svg-wrap">
+          <iframe title="Rendered SVG" sandbox="" csp="${svgPreviewCsp}"
+            referrerpolicy="no-referrer"></iframe>
+        </div>
+      </div>
+      <div class="panel" data-panel="png">
+        <div class="image-status">Rendering PNG…</div>
+        <div class="image-wrap" hidden>
+          <img alt="SVG rendered as PNG">
+        </div>
+        <div class="image-actions" hidden>
+          <button type="button">Download PNG</button>
+        </div>
+      </div>
+      <div class="panel" data-panel="jpeg">
+        <div class="image-status">Rendering JPEG…</div>
+        <div class="image-wrap" hidden>
+          <img alt="SVG rendered as JPEG">
+        </div>
+        <div class="image-actions" hidden>
+          <button type="button">Download JPEG</button>
+        </div>
+      </div>
+      ${mp4Panel}
+      <div class="panel" data-panel="code">
+        <div class="code-wrap">
+          <button type="button" class="copy-btn copy-code" title="Copy code" aria-label="Copy code">
+            ${COPY_ICON_SVG}
+            <span class="copy-text">Copy</span>
+          </button>
+          <pre></pre>
+        </div>
+      </div>
+    `;
+
+    shadow.querySelector(".svg-wrap").style.aspectRatio = svgAspectRatio(code);
+    shadow.querySelector("iframe").srcdoc = svgPreviewDocument(code);
+    shadow.querySelector("pre").textContent = code;
+    setupCopyButton(shadow, code);
+
+    const buttons = shadow.querySelectorAll(".tabs button");
+    const panels = shadow.querySelectorAll(".panel");
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        buttons.forEach((b) => b.classList.toggle("active", b === btn));
+        panels.forEach((p) =>
+          p.classList.toggle("active", p.dataset.panel === tab)
+        );
+        if (tab === "png" || tab === "jpeg") this.renderImage(tab);
+        if (tab === "mp4") this.prefetchFfmpeg();
+      });
+    });
+
+    if (this._animation) this.setupMp4Panel();
+  }
+
+  setupMp4Panel() {
+    const shadow = this.shadowRoot;
+    const panel = shadow.querySelector('.panel[data-panel="mp4"]');
+    const durationInput = panel.querySelector("input");
+    const generateBtn = panel.querySelector(".mp4-generate");
+    durationInput.value = this._animation.duration || 2;
+    generateBtn.addEventListener("click", () => this.generateMp4());
+  }
+
+  // Start downloading ffmpeg.wasm as soon as the MP4 tab is first opened, so
+  // it is (mostly) ready by the time the user clicks Generate.
+  prefetchFfmpeg() {
+    if (this._ffmpegPrefetched) return;
+    this._ffmpegPrefetched = true;
+
+    const panel = this.shadowRoot.querySelector('.panel[data-panel="mp4"]');
+    const status = panel.querySelector(".image-status");
+    const alreadyLoading = !!ffmpegPromise;
+    if (!this._generating) {
+      status.hidden = false;
+      status.classList.remove("error");
+      status.textContent = alreadyLoading
+        ? "Loading ffmpeg.wasm…"
+        : `Loading ffmpeg.wasm (~${FFMPEG_DOWNLOAD_MB} MB)…`;
+    }
+    getFfmpeg().then(
+      () => {
+        if (!this._generating) status.hidden = true;
+      },
+      (err) => {
+        // Allow Generate to retry: getFfmpeg() resets itself on failure.
+        this._ffmpegPrefetched = false;
+        if (!this._generating) {
+          status.classList.add("error");
+          status.textContent = `Could not load ffmpeg.wasm: ${err.message}`;
+        }
+      }
+    );
+  }
+
+  // Capture one frame of the animated SVG at time t, as PNG bytes.
+  snapshotFrame(t, width, height) {
+    const code = this.getAttribute("data-svg") || "";
+    const frameSvg = snapshotSvgAtTime(code, t);
+    const svgBlob = new Blob([frameSvg], { type: "image/svg+xml;charset=utf-8" });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(svgUrl);
+        canvas.toBlob(async (blob) => {
+          if (!blob) return reject(new Error("Could not encode frame"));
+          resolve(new Uint8Array(await blob.arrayBuffer()));
+        }, "image/png");
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(svgUrl);
+        reject(new Error("Could not rasterize this SVG (is xmlns present?)"));
+      };
+      img.src = svgUrl;
+    });
+  }
+
+  async generateMp4() {
+    const shadow = this.shadowRoot;
+    const code = this.getAttribute("data-svg") || "";
+    const panel = shadow.querySelector('.panel[data-panel="mp4"]');
+    const durationInput = panel.querySelector("input");
+    const generateBtn = panel.querySelector(".mp4-generate");
+    const status = panel.querySelector(".image-status");
+    const videoWrap = panel.querySelector(".video-wrap");
+    const video = panel.querySelector("video");
+    const actions = panel.querySelector(".image-actions");
+    const downloadBtn = actions.querySelector("button");
+
+    const duration = Math.min(30, Math.max(0.1, parseFloat(durationInput.value) || 2));
+    durationInput.value = duration;
+    const fps = 30;
+    const frameCount = Math.max(2, Math.round(duration * fps));
+
+    // Mobile-friendly output: scale to fit 720px on the longest side, with
+    // even dimensions as required by yuv420p.
+    const [ratioW, ratioH] = svgAspectRatioNumbers(code);
+    const scale = 720 / Math.max(ratioW, ratioH);
+    const width = Math.max(2, 2 * Math.round((ratioW * scale) / 2));
+    const height = Math.max(2, 2 * Math.round((ratioH * scale) / 2));
+
+    this._generating = true;
+    generateBtn.disabled = true;
+    videoWrap.hidden = true;
+    actions.hidden = true;
+    status.hidden = false;
+    status.classList.remove("error");
+
+    const setStatus = (msg) => {
+      status.textContent = msg;
+    };
+
+    try {
+      setStatus(ffmpegPromise
+        ? "Loading ffmpeg.wasm…"
+        : `Loading ffmpeg.wasm (~${FFMPEG_DOWNLOAD_MB} MB)…`);
+      const ffmpeg = await getFfmpeg();
+
+      const frames = [];
+      for (let i = 0; i < frameCount; i++) {
+        setStatus(`Capturing frame ${i + 1}/${frameCount}…`);
+        frames.push(await this.snapshotFrame((i / fps) % duration, width, height));
+      }
+
+      // One generation at a time: the shared worker has a single filesystem.
+      const mp4 = await (ffmpegJobQueue = ffmpegJobQueue.catch(() => {}).then(async () => {
+        setStatus("Encoding…");
+        ffmpeg.handlers.progress = (progress) => {
+          if (progress >= 0 && progress <= 1) {
+            setStatus(`Encoding… ${Math.round(progress * 100)}%`);
+          }
+        };
+        for (let i = 0; i < frames.length; i++) {
+          const data = frames[i];
+          await ffmpeg.call(
+            "writeFile",
+            { name: `frame${String(i).padStart(5, "0")}.png`, data },
+            [data.buffer]
+          );
+        }
+        const rc = await ffmpeg.call("run", { args: [
+          "-framerate", String(fps), "-i", "frame%05d.png",
+          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-profile:v", "main",
+          "-preset", "veryfast", "-crf", "26", "-movflags", "+faststart",
+          "-y", "out.mp4"
+        ]});
+        const cleanup = [];
+        for (let i = 0; i < frames.length; i++) {
+          cleanup.push(ffmpeg.call("deleteFile", {
+            name: `frame${String(i).padStart(5, "0")}.png`
+          }).catch(() => {}));
+        }
+        await Promise.all(cleanup);
+        if (rc !== 0) throw new Error(`ffmpeg exited with code ${rc}`);
+        const bytes = await ffmpeg.call("readFile", { name: "out.mp4" });
+        await ffmpeg.call("deleteFile", { name: "out.mp4" }).catch(() => {});
+        return bytes;
+      }));
+
+      const blob = new Blob([mp4.buffer], { type: "video/mp4" });
+      const url = URL.createObjectURL(blob);
+      if (this._mp4Url) URL.revokeObjectURL(this._mp4Url);
+      this._mp4Url = url;
+
+      status.hidden = true;
+      video.onerror = () => {
+        status.hidden = false;
+        status.classList.remove("error");
+        setStatus("This browser cannot preview H.264 video — the download should still play elsewhere.");
+      };
+      video.src = url;
+      videoWrap.hidden = false;
+      actions.hidden = false;
+      const sizeKB = (mp4.byteLength / 1024).toFixed(1);
+      downloadBtn.textContent = `Download MP4 (${sizeKB} KB)`;
+      downloadBtn.onclick = () => {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "animation.mp4";
+        link.click();
+      };
+    } catch (err) {
+      status.hidden = false;
+      status.classList.add("error");
+      setStatus(`Could not generate MP4: ${err.message}`);
+    } finally {
+      this._generating = false;
+      generateBtn.disabled = false;
+    }
+  }
+
+  // Rasterize the SVG to PNG/JPEG at the size the SVG preview is displayed,
+  // by drawing it onto a canvas via a blob URL (same approach as
+  // svg-render.html). Runs lazily on first visit to the tab.
+  renderImage(format) {
+    this._rendered = this._rendered || {};
+    if (this._rendered[format]) return;
+    this._rendered[format] = true;
+
+    const shadow = this.shadowRoot;
+    const code = this.getAttribute("data-svg") || "";
+    const panel = shadow.querySelector(`.panel[data-panel="${format}"]`);
+    const status = panel.querySelector(".image-status");
+    const imageWrap = panel.querySelector(".image-wrap");
+    const imageEl = panel.querySelector("img");
+    const actions = panel.querySelector(".image-actions");
+    const downloadBtn = actions.querySelector("button");
+
+    status.hidden = false;
+    status.textContent = `Rendering ${format.toUpperCase()}…`;
+    status.classList.remove("error");
+
+    const fail = (message) => {
+      this._rendered[format] = false;
+      status.hidden = false;
+      status.textContent = message;
+      status.classList.add("error");
+    };
+
+    // Match the displayed size of the SVG preview: the iframe in .svg-wrap
+    // is width:100% of the host content box, same as the raster <img>.
+    const [ratioW, ratioH] = svgAspectRatioNumbers(code);
+    const width = Math.max(1, Math.round(this.clientWidth));
+    const height = Math.max(1, Math.round((width * ratioH) / ratioW));
+
+    const mimeType = format === "png" ? "image/png" : "image/jpeg";
+    const svgBlob = new Blob([code], { type: "image/svg+xml;charset=utf-8" });
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(svgUrl);
+
+      let dataUrl;
+      try {
+        dataUrl = canvas.toDataURL(mimeType, 0.9);
+      } catch (err) {
+        fail(`Could not render ${format.toUpperCase()}: ${err.message}`);
+        return;
+      }
+
+      status.hidden = true;
+      imageEl.src = dataUrl;
+      imageWrap.hidden = false;
+      actions.hidden = false;
+
+      const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+      const padding = (base64.match(/=+$/) || [""])[0].length;
+      const bytes = (base64.length * 3) / 4 - padding;
+      const sizeKB = (bytes / 1024).toFixed(2);
+      downloadBtn.textContent = `Download ${format.toUpperCase()} (${sizeKB} KB)`;
+
+      downloadBtn.onclick = () => {
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = format === "png" ? "image.png" : "image.jpg";
+        link.click();
+      };
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(svgUrl);
+      fail(`Could not render this SVG as ${format.toUpperCase()}.`);
+    };
+    img.src = svgUrl;
+  }
+}
+customElements.define("svg-block", SvgBlock);
+
+class HtmlBlock extends HTMLElement {
+  connectedCallback() {
+    if (this.shadowRoot) return;
+
+    const code = this.getAttribute("data-html") || "";
+    const shadow = this.attachShadow({ mode: "open" });
+
+    shadow.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          max-width: 100%;
+          margin: 1em 0;
+          border: 1px solid #e2e2e2;
+          border-radius: 8px;
+          overflow: hidden;
+          font-family: Helvetica, Arial, sans-serif;
+        }
+        .tabs {
+          display: flex;
+          border-bottom: 1px solid #e2e2e2;
+          background: #f6f6f6;
+        }
+        .tabs button {
+          font-family: inherit;
+          font-size: 13px;
+          border: none;
+          background: none;
+          padding: 8px 16px;
+          cursor: pointer;
+          color: #666;
+          border-bottom: 2px solid transparent;
+          margin-bottom: -1px;
+        }
+        .tabs button.active {
+          color: #1a1a1a;
+          font-weight: bold;
+          border-bottom-color: #2563eb;
+          background: #fff;
+        }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .html-wrap {
+          width: 100%;
+          height: 400px;
+          min-height: 150px;
+          background: #fff;
+          resize: vertical;
+          overflow: auto;
+        }
+        iframe {
+          display: block;
+          width: 100%;
+          height: 100%;
+          border: 0;
+          background: #fff;
+        }
+        .code-wrap {
+          position: relative;
+        }
+        pre {
+          margin: 0;
+          padding: 14px 16px;
+          overflow-x: auto;
+          background: #1e1e1e;
+          color: #e8e8e8;
+          font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+        .copy-btn {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-family: inherit;
+          font-size: 12px;
+          color: #bbb;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          padding: 4px 8px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .copy-btn:hover {
+          color: #fff;
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.35);
+        }
+        .copy-btn.copied {
+          color: #22c55e;
+          border-color: #22c55e;
+          background: rgba(34, 197, 94, 0.15);
+        }
+        .copy-btn svg {
+          display: block;
+          flex-shrink: 0;
+        }
+      </style>
+      <div class="tabs">
+        <button class="active" data-tab="render">Rendered</button>
+        <button data-tab="code">Code</button>
+      </div>
+      <div class="panel active" data-panel="render">
+        <div class="html-wrap">
+          <iframe title="Rendered HTML" sandbox="allow-scripts" csp="${htmlPreviewCsp}"
+            referrerpolicy="no-referrer"></iframe>
+        </div>
+      </div>
+      <div class="panel" data-panel="code">
+        <div class="code-wrap">
+          <button type="button" class="copy-btn copy-code" title="Copy code" aria-label="Copy code">
+            ${COPY_ICON_SVG}
+            <span class="copy-text">Copy</span>
+          </button>
+          <pre></pre>
+        </div>
+      </div>
+    `;
+
+    shadow.querySelector("iframe").srcdoc = htmlPreviewDocument(code);
+    shadow.querySelector("pre").textContent = code;
+    setupCopyButton(shadow, code);
+
+    const buttons = shadow.querySelectorAll(".tabs button");
+    const panels = shadow.querySelectorAll(".panel");
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        buttons.forEach((b) => b.classList.toggle("active", b === btn));
+        panels.forEach((p) =>
+          p.classList.toggle("active", p.dataset.panel === tab)
+        );
+      });
+    });
+  }
+}
+customElements.define("html-block", HtmlBlock);
+
+// ---- Markdown rendering ----
+const markdownSanitizeConfig = {
+  USE_PROFILES: { html: true },
+  ADD_ATTR: ["data-svg-id", "data-html-id"],
+  FORBID_ATTR: ["style"],
+  FORBID_TAGS: ["style"]
+};
+
+const md = window.markdownit({
+  html: false,
+  linkify: false,
+  typographer: false
+});
+
+// Raw SVG and HTML sources are stashed here and represented in the sanitized Markdown
+// by numeric ids. hydrateSvgBlocks() and hydrateHtmlBlocks() pass them to the sandboxed
+// iframes using DOM APIs, so raw markup is never parsed in the parent document.
+const svgStore = new Map();
+const htmlStore = new Map();
+
+const defaultFenceRenderer = md.renderer.rules.fence;
+md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  const token = tokens[idx];
+  const lang = (token.info || "").trim().split(/\s+/)[0].toLowerCase();
+  const trimmed = token.content.trim();
+  const isSvg = lang === "svg" || (lang === "xml" && trimmed.startsWith("<svg") && trimmed.endsWith("</svg>"));
+  const isHtml = lang === "html";
+
+  if (isSvg) {
+    if (trimmed) {
+      const id = String(svgStore.size);
+      svgStore.set(id, token.content);
+      return `<div class="svg-block-placeholder" data-svg-id="${id}"></div>\n`;
+    }
+  }
+
+  if (isHtml) {
+    if (trimmed) {
+      const id = String(htmlStore.size);
+      htmlStore.set(id, token.content);
+      return `<div class="html-block-placeholder" data-html-id="${id}"></div>\n`;
+    }
+  }
+
+  return defaultFenceRenderer(tokens, idx, options, env, self);
+};
+
+function hydrateSvgBlocks(root) {
+  root.querySelectorAll(".svg-block-placeholder[data-svg-id]").forEach((placeholder) => {
+    const svg = svgStore.get(placeholder.getAttribute("data-svg-id"));
+    if (!svg) {
+      placeholder.remove();
+      return;
+    }
+    const block = document.createElement("svg-block");
+    block.setAttribute("data-svg", svg);
+    placeholder.replaceWith(block);
+  });
+}
+
+function hydrateHtmlBlocks(root) {
+  root.querySelectorAll(".html-block-placeholder[data-html-id]").forEach((placeholder) => {
+    const html = htmlStore.get(placeholder.getAttribute("data-html-id"));
+    if (!html) {
+      placeholder.remove();
+      return;
+    }
+    const block = document.createElement("html-block");
+    block.setAttribute("data-html", html);
+    placeholder.replaceWith(block);
+  });
+}
+
+function renderMarkdown(src) {
+  svgStore.clear();
+  htmlStore.clear();
+  const html = md.render(src);
+  return window.DOMPurify.sanitize(html, markdownSanitizeConfig);
+}
+
+const app = document.querySelector(".app");
+const input = document.getElementById("input");
+const output = document.getElementById("output");
+const tabPaste = document.getElementById("tab-paste");
+const tabUrl = document.getElementById("tab-url");
+const urlBar = document.getElementById("url-bar");
+const urlInput = document.getElementById("url-input");
+const urlLoad = document.getElementById("url-load");
+const urlStatus = document.getElementById("url-status");
+const sourceToggle = document.getElementById("source-toggle");
+
+// Give every heading a GitHub-style id (derived from its text) plus a small
+// "#" link so individual sections can be linked to. This runs on the sanitized
+// DOM rather than in the markdown-it renderer so DOMPurify cannot strip the ids.
+function slugify(text) {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]+/gu, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function addHeadingAnchors(root) {
+  const seen = new Map();
+  root.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((heading) => {
+    let slug = slugify(heading.textContent) || "section";
+    const count = seen.get(slug) || 0;
+    seen.set(slug, count + 1);
+    if (count) slug = `${slug}-${count}`;
+    heading.id = slug;
+    const anchor = document.createElement("a");
+    anchor.className = "header-anchor";
+    anchor.href = "#" + encodeURIComponent(slug);
+    anchor.setAttribute("aria-label", "Link to this section");
+    anchor.textContent = "#";
+    heading.appendChild(anchor);
+  });
+}
+
+function scrollToHash() {
+  const hash = location.hash.slice(1);
+  if (!hash) return;
+  let id;
+  try {
+    id = decodeURIComponent(hash);
+  } catch {
+    id = hash;
+  }
+  const target = output.querySelector(`[id="${CSS.escape(id)}"]`);
+  if (target) target.scrollIntoView();
+}
+
+function update() {
+  output.innerHTML = renderMarkdown(input.value);
+  addHeadingAnchors(output);
+  hydrateSvgBlocks(output);
+  hydrateHtmlBlocks(output);
+}
+
+input.addEventListener("input", update);
+
+function setViewerMode(enabled) {
+  app.classList.toggle("viewer-mode", enabled);
+  sourceToggle.setAttribute("aria-pressed", enabled ? "true" : "false");
+  sourceToggle.setAttribute("aria-label", enabled ? "Show source" : "Hide source");
+  sourceToggle.title = enabled ? "Show source" : "Hide source";
+}
+
+function setUrlContentLoaded(enabled) {
+  app.classList.toggle("has-url-content", enabled);
+  if (!enabled) setViewerMode(false);
+}
+
+sourceToggle.addEventListener("click", () => {
+  setViewerMode(!app.classList.contains("viewer-mode"));
+});
+
+// ---- Source mode switching ----
+function setMode(mode) {
+  const isUrl = mode === "url";
+  tabUrl.classList.toggle("active", isUrl);
+  tabPaste.classList.toggle("active", !isUrl);
+  urlBar.classList.toggle("active", isUrl);
+  input.readOnly = isUrl;
+  input.style.background = isUrl ? "#f9f9f9" : "#fff";
+}
+
+tabPaste.addEventListener("click", () => {
+  setUrlContentLoaded(false);
+  setMode("paste");
+  input.readOnly = false;
+  input.style.background = "#fff";
+  if (location.search || location.hash) history.pushState("", document.title, location.pathname);
+});
+
+tabUrl.addEventListener("click", () => setMode("url"));
+
+function setStatus(msg, isError) {
+  if (!msg) {
+    urlStatus.classList.remove("active", "error");
+    urlStatus.textContent = "";
+    return;
+  }
+  urlStatus.textContent = msg;
+  urlStatus.classList.add("active");
+  urlStatus.classList.toggle("error", !!isError);
+}
+
+// Match a gist URL and capture the gist id (the long hex segment).
+const gistRe = /^https?:\/\/gist\.github\.com\/(?:[^/]+\/)?([0-9a-f]+)/i;
+
+function normalizeSourceUrl(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl.trim());
+  } catch {
+    throw new Error("Enter a valid URL");
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("Only http and https URLs are supported");
+  }
+  return parsed.href;
+}
+
+async function fetchSource(url) {
+  const sourceUrl = normalizeSourceUrl(url);
+  const gistMatch = gistRe.exec(sourceUrl);
+  if (gistMatch) {
+    const id = gistMatch[1];
+    const res = await fetch(`https://api.github.com/gists/${id}`);
+    if (!res.ok) throw new Error(`Gist API returned ${res.status}`);
+    const data = await res.json();
+    const files = data.files || {};
+    const names = Object.keys(files);
+    if (!names.length) throw new Error("Gist contains no files");
+    const first = files[names[0]];
+    // The API truncates large files; fall back to raw_url if so.
+    if (first.truncated && first.raw_url) {
+      const raw = await fetch(first.raw_url);
+      if (!raw.ok) throw new Error(`Raw fetch returned ${raw.status}`);
+      return await raw.text();
+    }
+    return first.content;
+  }
+  // Plain raw markdown URL.
+  const res = await fetch(sourceUrl);
+  if (!res.ok) throw new Error(`Fetch returned ${res.status}`);
+  return await res.text();
+}
+
+async function loadFromUrl(url, recordUrl) {
+  setMode("url");
+  urlInput.value = url;
+  setStatus("Loading…");
+  try {
+    const text = await fetchSource(url);
+    input.value = text;
+    update();
+    setStatus("");
+    setUrlContentLoaded(true);
+    setViewerMode(true);
+    if (recordUrl) {
+      const newSearch = "?url=" + encodeURIComponent(url);
+      if (location.search !== newSearch) {
+        history.pushState({ url }, "", location.pathname + newSearch);
+      }
+    }
+    scrollToHash();
+  } catch (err) {
+    setStatus("Error: " + err.message, true);
+  }
+}
+
+urlLoad.addEventListener("click", () => {
+  const url = urlInput.value.trim();
+  if (url) loadFromUrl(url, true);
+});
+
+urlInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    urlLoad.click();
+  }
+});
+
+// ---- Query-string based load on startup / navigation ----
+function urlFromQuery() {
+  const url = new URLSearchParams(location.search).get("url");
+  return url ? url.trim() : null;
+}
+
+// Older links used #url=... in the fragment; redirect those to ?url=... so the
+// fragment is free for section anchors.
+function legacyUrlFromHash() {
+  const m = /^#url=(.+)$/.exec(location.hash);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return m[1];
+  }
+}
+
+window.addEventListener("popstate", () => {
+  const url = urlFromQuery();
+  if (url) {
+    loadFromUrl(url, false);
+  }
+});
+
+const sample = `# Markdown renderer
+
+Paste **markdown** here and watch it render on the right.
+
+## Features
+
+- Headings, *emphasis*, and \`inline code\`
+- Lists, tables, blockquotes
+- Standard \`\`\`code\`\`\` blocks
+- Special SVG blocks with tabs
+- Load from a raw markdown URL or a Gist
+
+> SVG fenced blocks render as a tabbed component.
+
+\`\`\`svg
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="200" height="120" fill="#2563eb"/>
+  <circle cx="100" cy="60" r="40" fill="#fbbf24"/>
+  <text x="100" y="66" text-anchor="middle" font-family="Helvetica" font-size="18" fill="#1a1a1a">SVG</text>
+</svg>
+\`\`\`
+
+Animated SVGs get an extra **MP4** tab that renders a looping video in your
+browser using ffmpeg.wasm:
+
+\`\`\`svg
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="200" height="120" fill="#0f172a"/>
+  <circle cx="100" cy="60" r="34" fill="none" stroke="#fbbf24" stroke-width="10"
+    stroke-linecap="round" stroke-dasharray="160 54">
+    <animateTransform attributeName="transform" type="rotate"
+      from="0 100 60" to="360 100 60" dur="2s" repeatCount="indefinite"/>
+  </circle>
+</svg>
+\`\`\`
+
+HTML blocks render in a sandboxed iframe with scripts allowed, restricted by a CSP
+allowing resources only from cdnjs, jsdelivr, unpkg, and esm.sh:
+
+\`\`\`html
+<div id="demo" style="padding: 24px; font-family: system-ui, sans-serif; text-align: center;">
+  <h2>Interactive HTML Preview</h2>
+  <button id="counter" style="padding: 8px 16px; font-size: 16px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #fff;">
+    Clicks: 0
+  </button>
+</div>
+<script>
+  let count = 0;
+  const btn = document.getElementById("counter");
+  btn.addEventListener("click", () => {
+    count++;
+    btn.textContent = "Clicks: " + count;
+  });
+<\/script>
+\`\`\`
+
+| Feature | Supported |
+|---------|-----------|
+| Tables  | Yes       |
+| SVG tabs| Yes       |
+| HTML tabs| Yes      |
+`;
+
+// On load: redirect legacy #url= links, otherwise load ?url= if present.
+const legacyUrl = legacyUrlFromHash();
+const startupUrl = urlFromQuery();
+if (legacyUrl) {
+  window.location = location.pathname + "?url=" + encodeURIComponent(legacyUrl);
+} else if (startupUrl) {
+  loadFromUrl(startupUrl, false);
+} else {
+  input.value = sample;
+  update();
+  scrollToHash();
+}
+</script>

@@ -1,0 +1,3 @@
+Extract tables from pasted content and convert them to multiple formats. Paste HTML, rich text, or plain text containing tables, and the tool automatically detects and displays each table with a preview, then allows you to export it as HTML, Markdown, CSV, TSV, or JSON. You can also import tables directly from Wikipedia by searching for page titles.
+
+<!-- Generated from commit: 5faafc8c53ac86c16f1ce6e2ef455158d780379c -->

@@ -4,6 +4,39 @@ These Python scripts can be run directly from their URLs using `uv run`.
 
 Their source code is [available on GitHub](https://github.com/simonw/tools/tree/main/python).
 
+## extract_urls.py
+
+Extract potential URLs from a local text file or an HTTP(S) resource and print
+one match per line. It recognizes both explicit HTTP(S) URLs and bare domain
+names.
+
+```bash
+uv run https://tools.simonwillison.net/python/extract_urls.py page.html
+uv run https://tools.simonwillison.net/python/extract_urls.py https://example.com/
+```
+
+## pi_jsonl_to_md.py
+
+Convert a Pi `.jsonl` transcript to Markdown [like this](https://gist.github.com/simonw/491e55ac9d741202ea0af5d9d93775d4):
+
+```bash
+uv run https://tools.simonwillison.net/python/pi_jsonl_to_md.py transcript.jsonl -o output.md
+```
+
+## first_line_history.py
+
+Show every version of the first line of a file in a GitHub repository and when it was edited.
+
+```bash
+uv run https://tools.simonwillison.net/python/first_line_history.py ~/dev/datasette/README.md
+```
+Output example:
+```
+2017-11-13T10:41:53-08:00 e838bd7 # datasette
+2017-11-24T19:46:24-08:00 efb82da # Datasette
+2021-11-12T06:18:31-08:00 c92ab51 <img src="https://datasette.io/static/datasette-logo.svg" alt="Datasette">
+```
+
 ## macos-windows.py
 
 List visible macOS windows using CoreGraphics / Quartz. Useful for finding rogue HUD/overlay windows or inspecting which apps have on-screen windows and where they sit.

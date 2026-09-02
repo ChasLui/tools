@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML table extractor</title>
+<style>
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #f4f4f1;
+  --surface: #ffffff;
+  --ink: #1b1b1a;
+  --muted: #76746e;
+  --line: #e4e3dd;
+  --line-strong: #d4d3cb;
+  --accent: #11705f;
+  --accent-soft: #e7f1ee;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+}
+
+header {
+  margin-bottom: 28px;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 0;
+}
+
+.paste {
+  background: var(--surface);
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 12px;
+  padding: 28px 22px;
+  min-height: 120px;
+  font-size: 16px;
+  color: var(--ink);
+  transition: border-color 0.15s ease, background 0.15s ease;
+  outline: none;
+  overflow-x: auto;
+}
+
+.paste:focus {
+  border-color: var(--accent);
+  border-style: solid;
+  background: #fdfdfc;
+}
+
+.paste:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+}
+
+.paste.has-content {
+  border-style: solid;
+  border-color: var(--line);
+}
+
+.paste.source-content {
+  max-height: 260px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.wiki-import {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.wiki-import label {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.wiki-autocomplete {
+  position: relative;
+  flex: 1 1 280px;
+  max-width: 440px;
+}
+
+.wiki-search {
+  width: 100%;
+  height: 38px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  outline: none;
+  padding: 0 12px;
+}
+
+.wiki-search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(17, 112, 95, 0.12);
+}
+
+.wiki-search:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.wiki-suggestions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: 0 16px 32px rgba(27, 27, 26, 0.12);
+  padding: 4px;
+}
+
+.wiki-option {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 8px 10px;
+}
+
+.wiki-option:hover,
+.wiki-option.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.wiki-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+kbd {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+.clear-btn {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.clear-btn:hover {
+  color: var(--ink);
+}
+
+.status {
+  margin: 28px 0 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.status.error {
+  color: #a3371f;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.dims {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.header-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.header-toggle input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+.preview {
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  background: #fbfbfa;
+}
+
+.preview table {
+  border-collapse: collapse;
+  font-size: 13px;
+  width: 100%;
+  min-width: max-content;
+}
+
+.preview th,
+.preview td {
+  border: 1px solid var(--line);
+  padding: 7px 11px;
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.preview thead th {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.preview tbody tr:nth-child(even) td {
+  background: #f6f6f3;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 18px 0;
+  flex-wrap: wrap;
+}
+
+.tab {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.tab:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.tab.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.output-wrap {
+  position: relative;
+  padding: 12px 18px 18px;
+}
+
+textarea.output {
+  width: 100%;
+  min-height: 64px;
+  max-height: 340px;
+  resize: vertical;
+  font-family: var(--mono);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  white-space: pre;
+  overflow: auto;
+  outline: none;
+}
+
+textarea.output:focus {
+  border-color: var(--accent);
+}
+
+.copy-btn {
+  position: absolute;
+  top: 22px;
+  right: 28px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.copy-btn:hover {
+  background: var(--bg);
+}
+
+.copy-btn.copied {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 40px 0 8px;
+}
+
+@media (max-width: 620px) {
+  .wiki-import {
+    align-items: stretch;
+  }
+
+  .wiki-autocomplete {
+    flex-basis: 100%;
+    max-width: none;
+  }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>HTML table extractor</h1>
+    <p class="sub">Paste rich text below. Any tables inside it are pulled out and offered as HTML, Markdown, CSV, TSV, and JSON.</p>
+  </header>
+
+  <div id="paste" class="paste" contenteditable="true" data-placeholder="Paste here…"></div>
+  <div class="wiki-import">
+    <label for="wiki-search">Or import from Wikipedia:</label>
+    <div class="wiki-autocomplete">
+      <input id="wiki-search" class="wiki-search" type="search" autocomplete="off" placeholder="Search page titles" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="wiki-suggestions">
+      <div id="wiki-suggestions" class="wiki-suggestions" role="listbox" hidden></div>
+    </div>
+  </div>
+  <div class="hint">
+    <span>Copy from a page, doc, or sheet, then press <kbd>⌘V</kbd> / <kbd>Ctrl+V</kbd>.</span>
+    <button id="clear" class="clear-btn" type="button" hidden>Clear</button>
+  </div>
+
+  <div id="status" class="status"></div>
+  <div id="results" class="results"></div>
+</div>
+
+<script type="module">
+// code in here should not be indented at the first level
+const pasteEl = document.getElementById('paste')
+const statusEl = document.getElementById('status')
+const resultsEl = document.getElementById('results')
+const clearBtn = document.getElementById('clear')
+const wikiSearchEl = document.getElementById('wiki-search')
+const wikiSuggestionsEl = document.getElementById('wiki-suggestions')
+
+const FORMATS = ['HTML', 'Markdown', 'CSV', 'TSV', 'JSON']
+const WIKIPEDIA_API = 'https://en.wikipedia.org/w/api.php'
+const WIKIPEDIA_SUGGESTION_LIMIT = 8
+
+let wikiSearchTimer = null
+let wikiSearchController = null
+let wikiSearchRequestId = 0
+let wikiSuggestions = []
+let activeWikiSuggestion = -1
+
+function cellText(cell) {
+  return (cell.textContent || '').replace(/\s+/g, ' ').trim()
+}
+
+function tableToGrid(table) {
+  const grid = []
+  const rows = Array.from(table.rows)
+  for (let r = 0; r < rows.length; r++) {
+    if (!grid[r]) grid[r] = []
+    let c = 0
+    for (const cell of Array.from(rows[r].cells)) {
+      while (grid[r][c] !== undefined) c++
+      const text = cellText(cell)
+      const colspan = parseInt(cell.getAttribute('colspan'), 10) || 1
+      const rowspan = parseInt(cell.getAttribute('rowspan'), 10) || 1
+      for (let dr = 0; dr < rowspan; dr++) {
+        for (let dc = 0; dc < colspan; dc++) {
+          if (!grid[r + dr]) grid[r + dr] = []
+          grid[r + dr][c + dc] = text
+        }
+      }
+      c += colspan
+    }
+  }
+  const maxCols = grid.reduce((m, row) => Math.max(m, row.length), 0)
+  for (const row of grid) {
+    for (let i = 0; i < maxCols; i++) {
+      if (row[i] === undefined) row[i] = ''
+    }
+  }
+  return grid
+}
+
+function detectHeader(table) {
+  return headerRowCount(table) > 0
+}
+
+function headerRowCount(table) {
+  if (table.tHead && table.tHead.rows.length) return table.tHead.rows.length
+  let count = 0
+  for (const row of Array.from(table.rows)) {
+    const cells = Array.from(row.cells)
+    if (!cells.length || !cells.every(c => c.tagName === 'TH')) break
+    count++
+  }
+  return count
+}
+
+function effectiveHeaderRowCount(grid, hasHeader) {
+  if (!hasHeader || !grid.length) return 0
+  return Math.min(grid.length, Math.max(1, grid.headerRowCount || 0))
+}
+
+function tableHeader(grid, count) {
+  const cols = grid.reduce((m, row) => Math.max(m, row.length), 0)
+  const headers = Array.from({ length: cols }, (_, i) => {
+    const parts = []
+    for (let r = 0; r < count; r++) {
+      const part = String(grid[r]?.[i] ?? '').trim()
+      if (part && !parts.includes(part)) parts.push(part)
+    }
+    return parts.join(' ') || 'Column ' + (i + 1)
+  })
+  const seen = new Map()
+  return headers.map(header => {
+    const seenCount = seen.get(header) || 0
+    seen.set(header, seenCount + 1)
+    return seenCount ? header + ' ' + (seenCount + 1) : header
+  })
+}
+
+function tableRows(grid, hasHeader) {
+  const headerRows = effectiveHeaderRowCount(grid, hasHeader)
+  return {
+    header: headerRows ? tableHeader(grid, headerRows) : [],
+    body: grid.slice(headerRows)
+  }
+}
+
+function escHTML(v) {
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function toHTML(grid, hasHeader) {
+  const lines = ['<table>']
+  const { header, body } = tableRows(grid, hasHeader)
+  if (header.length) {
+    lines.push('  <thead>', '    <tr>')
+    for (const c of header) lines.push('      <th>' + escHTML(c) + '</th>')
+    lines.push('    </tr>', '  </thead>')
+  }
+  lines.push('  <tbody>')
+  for (const row of body) {
+    lines.push('    <tr>')
+    for (const c of row) lines.push('      <td>' + escHTML(c) + '</td>')
+    lines.push('    </tr>')
+  }
+  lines.push('  </tbody>', '</table>')
+  return lines.join('\n')
+}
+
+function toMarkdown(grid, hasHeader) {
+  if (!grid.length) return ''
+  const cols = grid[0].length
+  const esc = v => String(v).replace(/\|/g, '\\|').replace(/\n/g, ' ')
+  let header
+  let body
+  if (hasHeader) {
+    const rows = tableRows(grid, hasHeader)
+    header = rows.header
+    body = rows.body
+  } else {
+    header = Array.from({ length: cols }, (_, i) => 'Column ' + (i + 1))
+    body = grid
+  }
+  const lines = []
+  lines.push('| ' + header.map(esc).join(' | ') + ' |')
+  lines.push('| ' + header.map(() => '---').join(' | ') + ' |')
+  for (const row of body) lines.push('| ' + row.map(esc).join(' | ') + ' |')
+  return lines.join('\n')
+}
+
+function csvCell(v) {
+  v = String(v)
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v
+}
+
+function exportRows(grid, hasHeader) {
+  const { header, body } = tableRows(grid, hasHeader)
+  return header.length ? [header, ...body] : body
+}
+
+function toCSV(grid, hasHeader) {
+  return exportRows(grid, hasHeader).map(row => row.map(csvCell).join(',')).join('\n')
+}
+
+function toTSV(grid, hasHeader) {
+  return exportRows(grid, hasHeader).map(row => row.map(v => String(v).replace(/[\t\n\r]+/g, ' ')).join('\t')).join('\n')
+}
+
+function toJSON(grid, hasHeader) {
+  if (hasHeader && grid.length) {
+    const { header, body } = tableRows(grid, hasHeader)
+    const rows = body.map(row => {
+      const obj = {}
+      header.forEach((k, i) => { obj[k] = row[i] ?? '' })
+      return obj
+    })
+    return JSON.stringify(rows, null, 2)
+  }
+  return JSON.stringify(grid, null, 2)
+}
+
+function wikipediaApiUrl(params) {
+  const url = new URL(WIKIPEDIA_API)
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value)
+  }
+  url.searchParams.set('format', 'json')
+  url.searchParams.set('origin', '*')
+  return url
+}
+
+function hideWikiSuggestions() {
+  wikiSuggestionsEl.hidden = true
+  wikiSuggestionsEl.innerHTML = ''
+  wikiSearchEl.setAttribute('aria-expanded', 'false')
+  wikiSearchEl.removeAttribute('aria-activedescendant')
+  activeWikiSuggestion = -1
+}
+
+function setActiveWikiSuggestion(index) {
+  const max = wikiSuggestions.length - 1
+  activeWikiSuggestion = Math.max(-1, Math.min(index, max))
+  Array.from(wikiSuggestionsEl.children).forEach((child, i) => {
+    const active = i === activeWikiSuggestion
+    child.classList.toggle('active', active)
+    child.setAttribute('aria-selected', active ? 'true' : 'false')
+  })
+  if (activeWikiSuggestion >= 0) {
+    wikiSearchEl.setAttribute('aria-activedescendant', 'wiki-option-' + activeWikiSuggestion)
+  } else {
+    wikiSearchEl.removeAttribute('aria-activedescendant')
+  }
+}
+
+function renderWikiSuggestions(titles) {
+  wikiSuggestions = titles
+  wikiSuggestionsEl.innerHTML = ''
+
+  if (!titles.length) {
+    const empty = document.createElement('div')
+    empty.className = 'wiki-empty'
+    empty.textContent = 'No matching page titles.'
+    wikiSuggestionsEl.appendChild(empty)
+    wikiSuggestionsEl.hidden = false
+    wikiSearchEl.setAttribute('aria-expanded', 'true')
+    activeWikiSuggestion = -1
+    return
+  }
+
+  titles.forEach((title, index) => {
+    const option = document.createElement('button')
+    option.type = 'button'
+    option.className = 'wiki-option'
+    option.id = 'wiki-option-' + index
+    option.setAttribute('role', 'option')
+    option.setAttribute('aria-selected', 'false')
+    option.textContent = title
+    option.addEventListener('mousedown', event => {
+      event.preventDefault()
+    })
+    option.addEventListener('click', () => {
+      importWikipediaPage(title)
+    })
+    wikiSuggestionsEl.appendChild(option)
+  })
+
+  wikiSuggestionsEl.hidden = false
+  wikiSearchEl.setAttribute('aria-expanded', 'true')
+  setActiveWikiSuggestion(-1)
+}
+
+async function searchWikipediaTitles(query) {
+  const trimmed = query.trim()
+  if (trimmed.length < 2) {
+    if (wikiSearchController) wikiSearchController.abort()
+    wikiSearchRequestId++
+    hideWikiSuggestions()
+    return
+  }
+
+  if (wikiSearchController) wikiSearchController.abort()
+  const controller = new AbortController()
+  const requestId = ++wikiSearchRequestId
+  wikiSearchController = controller
+  wikiSearchEl.setAttribute('aria-busy', 'true')
+
+  try {
+    const response = await fetch(wikipediaApiUrl({
+      action: 'opensearch',
+      search: trimmed,
+      namespace: '0',
+      limit: String(WIKIPEDIA_SUGGESTION_LIMIT)
+    }), { signal: controller.signal })
+
+    if (!response.ok) throw new Error('Wikipedia title search failed.')
+    const data = await response.json()
+    if (requestId !== wikiSearchRequestId) return
+    renderWikiSuggestions(Array.isArray(data?.[1]) ? data[1] : [])
+  } catch (error) {
+    if (error.name === 'AbortError') return
+    wikiSuggestions = []
+    wikiSuggestionsEl.innerHTML = '<div class="wiki-empty">Could not reach Wikipedia.</div>'
+    wikiSuggestionsEl.hidden = false
+    wikiSearchEl.setAttribute('aria-expanded', 'true')
+  } finally {
+    if (requestId === wikiSearchRequestId) {
+      wikiSearchEl.removeAttribute('aria-busy')
+      wikiSearchController = null
+    }
+  }
+}
+
+function scheduleWikipediaSearch() {
+  clearTimeout(wikiSearchTimer)
+  wikiSearchTimer = setTimeout(() => {
+    searchWikipediaTitles(wikiSearchEl.value)
+  }, 220)
+}
+
+async function importWikipediaPage(title) {
+  const pageTitle = title.trim()
+  if (!pageTitle) return
+
+  if (wikiSearchController) wikiSearchController.abort()
+  clearTimeout(wikiSearchTimer)
+  hideWikiSuggestions()
+  wikiSearchEl.value = pageTitle
+  wikiSearchEl.disabled = true
+  statusEl.textContent = 'Importing "' + pageTitle + '" from Wikipedia...'
+  statusEl.className = 'status'
+
+  try {
+    const response = await fetch(wikipediaApiUrl({
+      action: 'parse',
+      page: pageTitle,
+      prop: 'text'
+    }))
+    if (!response.ok) throw new Error('Wikipedia import failed.')
+
+    const data = await response.json()
+    if (data.error) throw new Error(data.error.info || 'Wikipedia could not parse that page.')
+
+    const html = data.parse?.text?.['*']
+    if (!html) throw new Error('Wikipedia did not return HTML for that page.')
+
+    pasteEl.textContent = html
+    pasteEl.scrollTop = 0
+    pasteEl.classList.add('has-content')
+    pasteEl.classList.add('source-content')
+    clearBtn.hidden = false
+    process(html)
+  } catch (error) {
+    statusEl.textContent = error.message || 'Could not import that Wikipedia page.'
+    statusEl.className = 'status error'
+  } finally {
+    wikiSearchEl.disabled = false
+    wikiSearchEl.focus()
+  }
+}
+
+function render(grid, format, hasHeader) {
+  switch (format) {
+    case 'HTML': return toHTML(grid, hasHeader)
+    case 'Markdown': return toMarkdown(grid, hasHeader)
+    case 'CSV': return toCSV(grid, hasHeader)
+    case 'TSV': return toTSV(grid, hasHeader)
+    case 'JSON': return toJSON(grid, hasHeader)
+    default: return ''
+  }
+}
+
+function buildPreview(grid, hasHeader) {
+  const table = document.createElement('table')
+  const { header, body } = tableRows(grid, hasHeader)
+  if (header.length) {
+    const thead = document.createElement('thead')
+    const tr = document.createElement('tr')
+    for (const c of header) {
+      const th = document.createElement('th')
+      th.textContent = c
+      tr.appendChild(th)
+    }
+    thead.appendChild(tr)
+    table.appendChild(thead)
+  }
+  const tbody = document.createElement('tbody')
+  for (const row of body) {
+    const tr = document.createElement('tr')
+    for (const c of row) {
+      const td = document.createElement('td')
+      td.textContent = c
+      tr.appendChild(td)
+    }
+    tbody.appendChild(tr)
+  }
+  table.appendChild(tbody)
+  return table
+}
+
+function makeCard(grid, index) {
+  const state = { format: 'HTML', hasHeader: grid.detectedHeader }
+
+  const card = document.createElement('div')
+  card.className = 'card'
+
+  const head = document.createElement('div')
+  head.className = 'card-head'
+
+  const title = document.createElement('h2')
+  title.className = 'card-title'
+  title.textContent = 'Table ' + index
+
+  const dims = document.createElement('span')
+  dims.className = 'dims'
+  dims.textContent = grid.length + ' × ' + (grid[0] ? grid[0].length : 0)
+
+  const toggle = document.createElement('label')
+  toggle.className = 'header-toggle'
+  const checkbox = document.createElement('input')
+  checkbox.type = 'checkbox'
+  checkbox.checked = state.hasHeader
+  toggle.appendChild(checkbox)
+  toggle.appendChild(document.createTextNode('Use table headers'))
+
+  head.append(title, dims, toggle)
+
+  const previewWrap = document.createElement('div')
+  previewWrap.className = 'preview'
+  previewWrap.appendChild(buildPreview(grid, state.hasHeader))
+
+  const tabs = document.createElement('div')
+  tabs.className = 'tabs'
+  const tabButtons = {}
+  for (const fmt of FORMATS) {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'tab' + (fmt === state.format ? ' active' : '')
+    btn.textContent = fmt
+    btn.addEventListener('click', () => {
+      state.format = fmt
+      for (const f in tabButtons) tabButtons[f].classList.toggle('active', f === fmt)
+      update()
+    })
+    tabButtons[fmt] = btn
+    tabs.appendChild(btn)
+  }
+
+  const outputWrap = document.createElement('div')
+  outputWrap.className = 'output-wrap'
+
+  const textarea = document.createElement('textarea')
+  textarea.className = 'output'
+  textarea.readOnly = true
+  textarea.spellcheck = false
+
+  const copyBtn = document.createElement('button')
+  copyBtn.type = 'button'
+  copyBtn.className = 'copy-btn'
+  copyBtn.textContent = 'Copy'
+
+  let copyTimer = null
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(textarea.value)
+    } catch (err) {
+      textarea.select()
+      document.execCommand('copy')
+    }
+    copyBtn.textContent = 'Copied'
+    copyBtn.classList.add('copied')
+    clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => {
+      copyBtn.textContent = 'Copy'
+      copyBtn.classList.remove('copied')
+    }, 1400)
+  })
+
+  outputWrap.append(textarea, copyBtn)
+
+  function update() {
+    textarea.value = render(grid, state.format, state.hasHeader)
+    const rows = textarea.value.split('\n').length
+    textarea.style.height = 'auto'
+    textarea.style.height = Math.min(340, Math.max(64, rows * 24 + 30)) + 'px'
+  }
+
+  checkbox.addEventListener('change', () => {
+    state.hasHeader = checkbox.checked
+    previewWrap.innerHTML = ''
+    previewWrap.appendChild(buildPreview(grid, state.hasHeader))
+    update()
+  })
+
+  card.append(head, previewWrap, tabs, outputWrap)
+  update()
+  return card
+}
+
+function extractTables(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const all = Array.from(doc.querySelectorAll('table'))
+  return all.filter(t => !(t.parentElement && t.parentElement.closest('table')))
+}
+
+function process(html) {
+  resultsEl.innerHTML = ''
+  const tables = extractTables(html)
+
+  if (!tables.length) {
+    statusEl.textContent = 'No tables found in the pasted content.'
+    statusEl.className = 'status error'
+    return
+  }
+
+  statusEl.textContent = 'Found ' + tables.length + (tables.length === 1 ? ' table.' : ' tables.')
+  statusEl.className = 'status'
+
+  tables.forEach((table, i) => {
+    const grid = tableToGrid(table)
+    grid.headerRowCount = headerRowCount(table)
+    grid.detectedHeader = detectHeader(table)
+    resultsEl.appendChild(makeCard(grid, i + 1))
+  })
+}
+
+function handlePaste(e) {
+  const data = e.clipboardData
+  if (!data) return
+  const html = data.getData('text/html')
+  const plain = data.getData('text/plain')
+
+  e.preventDefault()
+
+  let source = html
+  if (!source && /<table[\s>]/i.test(plain)) source = plain
+
+  pasteEl.textContent = ''
+  pasteEl.classList.remove('source-content')
+  pasteEl.classList.toggle('has-content', !!source)
+  clearBtn.hidden = !source
+
+  if (!source) {
+    statusEl.textContent = 'That clipboard content had no HTML tables.'
+    statusEl.className = 'status error'
+    resultsEl.innerHTML = ''
+    return
+  }
+
+  process(source)
+}
+
+pasteEl.addEventListener('paste', handlePaste)
+
+wikiSearchEl.addEventListener('input', scheduleWikipediaSearch)
+
+wikiSearchEl.addEventListener('keydown', event => {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    if (wikiSuggestionsEl.hidden && wikiSuggestions.length) {
+      renderWikiSuggestions(wikiSuggestions)
+    }
+    setActiveWikiSuggestion(activeWikiSuggestion + 1)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    setActiveWikiSuggestion(activeWikiSuggestion <= 0 ? wikiSuggestions.length - 1 : activeWikiSuggestion - 1)
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    const title = activeWikiSuggestion >= 0 ? wikiSuggestions[activeWikiSuggestion] : wikiSearchEl.value
+    importWikipediaPage(title)
+  } else if (event.key === 'Escape') {
+    hideWikiSuggestions()
+  }
+})
+
+wikiSearchEl.addEventListener('blur', () => {
+  setTimeout(hideWikiSuggestions, 120)
+})
+
+document.addEventListener('paste', e => {
+  const t = e.target
+  if (t === pasteEl) return
+  if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT')) return
+  pasteEl.focus()
+  handlePaste(e)
+})
+
+clearBtn.addEventListener('click', () => {
+  pasteEl.textContent = ''
+  pasteEl.classList.remove('has-content')
+  pasteEl.classList.remove('source-content')
+  clearBtn.hidden = true
+  statusEl.textContent = ''
+  statusEl.className = 'status'
+  resultsEl.innerHTML = ''
+  wikiSearchEl.value = ''
+  hideWikiSuggestions()
+  pasteEl.focus()
+})
+
+pasteEl.focus()
+</script>
+</body>
+</html>

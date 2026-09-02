@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buoyant Pigment — Pelican on a Bicycle</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Anthropic Brand Colors */
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --anthropic-blue: #6a9bcc;
+            --anthropic-green: #788c5d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--anthropic-light) 0%, #f5f3ee 100%);
+            min-height: 100vh;
+            color: var(--anthropic-dark);
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.1);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .sidebar h1 {
+            font-family: 'Lora', serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--anthropic-dark);
+            margin-bottom: 8px;
+        }
+
+        .sidebar .subtitle {
+            color: var(--anthropic-mid-gray);
+            font-size: 14px;
+            margin-bottom: 32px;
+            line-height: 1.4;
+        }
+
+        /* Control Sections */
+        .control-section {
+            margin-bottom: 32px;
+        }
+
+        .control-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--anthropic-dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-section h3::before {
+            content: '•';
+            color: var(--anthropic-orange);
+            font-weight: bold;
+        }
+
+        /* Seed Controls */
+        .seed-input {
+            width: 100%;
+            background: var(--anthropic-light);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 12px;
+            border: 1px solid var(--anthropic-light-gray);
+            text-align: center;
+        }
+
+        .seed-input:focus {
+            outline: none;
+            border-color: var(--anthropic-orange);
+            box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.1);
+            background: white;
+        }
+
+        .seed-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .regen-button {
+            margin-bottom: 0;
+        }
+
+        /* Parameter Controls */
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--anthropic-dark);
+            margin-bottom: 8px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            height: 4px;
+            background: var(--anthropic-light-gray);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--anthropic-orange);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            background: #c86641;
+        }
+
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--anthropic-orange);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .value-display {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+            min-width: 60px;
+            text-align: right;
+        }
+
+        /* Color Pickers */
+        .color-group {
+            margin-bottom: 16px;
+        }
+
+        .color-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+            margin-bottom: 4px;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-picker-container input[type="color"] {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+
+        .color-value {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+        }
+
+        /* Buttons */
+        .button {
+            background: var(--anthropic-orange);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .button:hover {
+            background: #c86641;
+            transform: translateY(-1px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button.secondary {
+            background: var(--anthropic-blue);
+        }
+
+        .button.secondary:hover {
+            background: #5a8bb8;
+        }
+
+        .button.tertiary {
+            background: var(--anthropic-green);
+        }
+
+        .button.tertiary:hover {
+            background: #6b7b52;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .button-row .button {
+            flex: 1;
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            max-width: 1000px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(20, 20, 19, 0.1);
+            background: white;
+        }
+
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--anthropic-mid-gray);
+        }
+
+        /* Responsive - Stack on mobile */
+        @media (max-width: 600px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            .canvas-area {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Control Sidebar -->
+        <div class="sidebar">
+            <h1>Buoyant Pigment</h1>
+            <div class="subtitle">A pelican pedals a bicycle in seeded watercolor — layered washes, blooming edges, wobbling ink. Every seed is a fresh painting.</div>
+
+            <!-- Seed Section -->
+            <div class="control-section">
+                <h3>Seed</h3>
+                <input type="number" id="seed-input" class="seed-input" value="1910" onchange="updateSeed()">
+                <div class="seed-controls">
+                    <button class="button secondary" onclick="previousSeed()">← Prev</button>
+                    <button class="button secondary" onclick="nextSeed()">Next →</button>
+                </div>
+                <button class="button tertiary regen-button" onclick="randomSeedAndUpdate()">↻ Random</button>
+            </div>
+
+            <!-- Parameters Section -->
+            <div class="control-section">
+                <h3>Parameters</h3>
+
+                <div class="control-group">
+                    <label>Wash Layers</label>
+                    <div class="slider-container">
+                        <input type="range" id="washLayers" min="6" max="36" step="1" value="18" oninput="updateParam('washLayers', this.value)">
+                        <span class="value-display" id="washLayers-value">18</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Edge Bleed</label>
+                    <div class="slider-container">
+                        <input type="range" id="edgeBleed" min="0.4" max="2.4" step="0.05" value="1.2" oninput="updateParam('edgeBleed', this.value)">
+                        <span class="value-display" id="edgeBleed-value">1.2</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Ink Wobble</label>
+                    <div class="slider-container">
+                        <input type="range" id="inkWobble" min="0" max="3" step="0.1" value="1.2" oninput="updateParam('inkWobble', this.value)">
+                        <span class="value-display" id="inkWobble-value">1.2</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Splatter Drops</label>
+                    <div class="slider-container">
+                        <input type="range" id="splatter" min="0" max="140" step="5" value="45" oninput="updateParam('splatter', this.value)">
+                        <span class="value-display" id="splatter-value">45</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Paper Grain</label>
+                    <div class="slider-container">
+                        <input type="range" id="paperGrain" min="0" max="1" step="0.05" value="0.5" oninput="updateParam('paperGrain', this.value)">
+                        <span class="value-display" id="paperGrain-value">0.5</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colors Section -->
+            <div class="control-section">
+                <h3>Colors</h3>
+
+                <div class="color-group">
+                    <label>Plumage</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="color1" value="#cfc4b4" onchange="updateColor('color1', this.value)">
+                        <span class="color-value" id="color1-value">#cfc4b4</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>Bill &amp; Pouch</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="color2" value="#d97757" onchange="updateColor('color2', this.value)">
+                        <span class="color-value" id="color2-value">#d97757</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>Bicycle</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="color3" value="#6a9bcc" onchange="updateColor('color3', this.value)">
+                        <span class="color-value" id="color3-value">#6a9bcc</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Section -->
+            <div class="control-section">
+                <h3>Actions</h3>
+                <button class="button" onclick="regenerate()" style="margin-bottom: 8px;">Regenerate</button>
+                <div class="button-row">
+                    <button class="button secondary" onclick="resetParameters()">Reset</button>
+                    <button class="button tertiary" onclick="downloadPNG()">Download PNG</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Canvas Area -->
+        <div class="canvas-area">
+            <div id="canvas-container">
+                <div class="loading">Wetting the paper...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════════
+        // BUOYANT PIGMENT — seeded watercolor of a pelican riding a bicycle
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let params = {
+            seed: 1910,           // the year of Merritt's pelican limerick
+            washLayers: 18,       // translucent glazes stacked per wash
+            edgeBleed: 1.2,       // how far water creeps past the silhouette
+            inkWobble: 1.2,       // tremor of the sketching hand
+            splatter: 45,         // flicked paint droplets
+            paperGrain: 0.5,      // tooth of the cold-press paper
+            colorPalette: ['#cfc4b4', '#d97757', '#6a9bcc']  // plumage, pouch, bicycle
+        };
+
+        let defaultParams = JSON.parse(JSON.stringify(params));
+
+        const PAPER = [251, 248, 241];
+        const INKC  = [58, 49, 42];
+
+        // ───────────────────────────── color helpers ─────────────────────────────
+
+        function hexToRgb(hex) {
+            const h = hex.replace('#', '');
+            return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)];
+        }
+        function mixc(a, b, t) {
+            return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+        }
+        function lightenc(c, t) { return mixc(c, PAPER, t); }
+        function darkenc(c, t)  { return mixc(c, INKC, t); }
+
+        // ───────────────────────────── geometry helpers ─────────────────────────────
+
+        function crPoint(p0, p1, p2, p3, t) {
+            const t2 = t * t, t3 = t2 * t;
+            return {
+                x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+                y: 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+            };
+        }
+
+        function sampleOpen(ctrl, per) {
+            const out = [];
+            for (let i = 0; i < ctrl.length - 1; i++) {
+                const p0 = ctrl[Math.max(0, i - 1)], p1 = ctrl[i];
+                const p2 = ctrl[i + 1], p3 = ctrl[Math.min(ctrl.length - 1, i + 2)];
+                for (let s = 0; s < per; s++) out.push(crPoint(p0, p1, p2, p3, s / per));
+            }
+            out.push({ x: ctrl[ctrl.length - 1].x, y: ctrl[ctrl.length - 1].y });
+            return out;
+        }
+
+        function sampleClosed(ctrl, per) {
+            const n = ctrl.length, out = [];
+            for (let i = 0; i < n; i++) {
+                const p0 = ctrl[(i - 1 + n) % n], p1 = ctrl[i], p2 = ctrl[(i + 1) % n], p3 = ctrl[(i + 2) % n];
+                for (let s = 0; s < per; s++) out.push(crPoint(p0, p1, p2, p3, s / per));
+            }
+            return out;
+        }
+
+        function circlePts(cx, cy, r, n) {
+            const out = [];
+            for (let i = 0; i < n; i++) {
+                const a = (i / n) * TWO_PI;
+                out.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+            }
+            return out;
+        }
+
+        function ellipsePts(cx, cy, rx, ry, n) {
+            const out = [];
+            for (let i = 0; i < n; i++) {
+                const a = (i / n) * TWO_PI;
+                out.push({ x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry });
+            }
+            return out;
+        }
+
+        // turn an open spine into a closed tapering ribbon polygon
+        function strokeToPoly(ctrl, w0, w1, per) {
+            const spine = sampleOpen(ctrl, per || 7);
+            const n = spine.length, L = [], R = [];
+            const wSeed = random(1000);
+            for (let i = 0; i < n; i++) {
+                const prev = spine[Math.max(0, i - 1)], nxt = spine[Math.min(n - 1, i + 1)];
+                let dx = nxt.x - prev.x, dy = nxt.y - prev.y;
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                const nx = -dy / len, ny = dx / len;
+                const hw = lerp(w0, w1, i / (n - 1)) * 0.5 * (0.88 + 0.28 * noise(i * 0.37, wSeed));
+                L.push({ x: spine[i].x + nx * hw, y: spine[i].y + ny * hw });
+                R.push({ x: spine[i].x - nx * hw, y: spine[i].y - ny * hw });
+            }
+            R.reverse();
+            return L.concat(R);
+        }
+
+        // ───────────────────────── watercolor engine ─────────────────────────
+        // Tyler Hobbs-style recursive polygon deformation: each vertex carries
+        // its own instability; edges subdivide with gaussian midpoint offsets
+        // whose variance decays generation by generation.
+
+        function attachVariance(pts, v0) {
+            return pts.map(p => ({
+                x: p.x, y: p.y,
+                v: v0 * (random() < 0.18 ? random(1.8, 3.1) : random(0.65, 1.35))
+            }));
+        }
+
+        function deformOnce(poly, mag) {
+            const out = [], n = poly.length;
+            for (let i = 0; i < n; i++) {
+                const a = poly[i], b = poly[(i + 1) % n];
+                out.push(a);
+                const v = (a.v + b.v) / 2;
+                const ang = random(TWO_PI);
+                const m = randomGaussian(0, v * mag);
+                out.push({
+                    x: (a.x + b.x) / 2 + Math.cos(ang) * m,
+                    y: (a.y + b.y) / 2 + Math.sin(ang) * m,
+                    v: v * random(0.42, 0.58)
+                });
+            }
+            return out;
+        }
+
+        function deform(poly, iters, mag) {
+            let p = poly;
+            for (let i = 0; i < iters; i++) p = deformOnce(p, mag);
+            return p;
+        }
+
+        function fillPoly(poly) {
+            beginShape();
+            for (const p of poly) vertex(p.x, p.y);
+            endShape(CLOSE);
+        }
+
+        function strokePoly(poly) {
+            beginShape();
+            for (const p of poly) vertex(p.x, p.y);
+            endShape(CLOSE);
+        }
+
+        // stack many independently re-deformed siblings of one shape
+        function paintBlob(rawPts, col, o) {
+            o = o || {};
+            const layers = Math.max(3, Math.round(params.washLayers * (o.layerScale || 1)));
+            const density = o.density || 150;
+            const alpha = constrain(density / layers, 3, 30);
+            let base = attachVariance(rawPts, (o.v0 || 10) * params.edgeBleed);
+            base = deform(base, o.baseIter || 3, 1);
+            noStroke();
+            for (let i = 0; i < layers; i++) {
+                const poly = deform(base, o.layerIter || 1, 1);
+                fill(col[0], col[1], col[2], alpha * random(0.65, 1.35));
+                fillPoly(poly);
+            }
+            if (o.edge) {  // faint pigment rim where the wash dried
+                const poly = deform(base, 1, 1);
+                noFill();
+                stroke(col[0], col[1], col[2], Math.min(90, alpha * 2.2));
+                strokeWeight(1.2);
+                strokePoly(poly);
+            }
+        }
+
+        // soft painted line — used for tires, frame tubes, sky strokes
+        function washStrokePath(pts, col, w, o) {
+            o = o || {};
+            let path = pts.slice();
+            if (o.closed) path = path.concat([path[0], path[1], path[2]]);
+            const passes = Math.max(3, Math.round(o.passes || params.washLayers * 0.6));
+            const alpha = constrain((o.density || 140) / passes, 3, 34);
+            const jit = 2.2 * params.edgeBleed * (o.jit || 1);
+            noFill();
+            for (let p = 0; p < passes; p++) {
+                stroke(col[0], col[1], col[2], alpha * random(0.7, 1.3));
+                strokeWeight(w * random(0.78, 1.18));
+                beginShape();
+                curveVertex(path[0].x, path[0].y);
+                for (const pt of path) curveVertex(pt.x + randomGaussian(0, jit), pt.y + randomGaussian(0, jit));
+                curveVertex(path[path.length - 1].x, path[path.length - 1].y);
+                endShape();
+            }
+        }
+
+        // wobbling hand-drawn ink line with a fainter ghost pass
+        function inkPath(pts, col, w, o) {
+            o = o || {};
+            const wob = params.inkWobble * (o.wob !== undefined ? o.wob : 1);
+            const alphaMain = o.alpha !== undefined ? o.alpha : 205;
+            const passes = o.passes !== undefined ? o.passes : 2;
+            const ns = random(1000);
+            const len = pts.length;
+            for (let p = 0; p < passes; p++) {
+                const aP = p === 0 ? alphaMain : alphaMain * 0.32;
+                const offA = random(100);
+                const offs = pts.map((pt, i) => ({
+                    dx: (noise(i * 0.13, offA) - 0.5) * 2 * wob * 2.4,
+                    dy: (noise(i * 0.13, offA + 55) - 0.5) * 2 * wob * 2.4
+                }));
+                const segs = o.closed ? len : len - 1;
+                for (let i = 0; i < segs; i++) {
+                    if (o.broken && p === 0 && random() < 0.05) continue;
+                    const a = pts[i], b = pts[(i + 1) % len];
+                    const sw = w * (0.6 + 0.8 * noise(i * 0.33, ns + p * 13));
+                    stroke(col[0], col[1], col[2], aP * (0.75 + 0.5 * noise(i * 0.21, ns + p * 31)));
+                    strokeWeight(sw);
+                    line(a.x + offs[i].dx, a.y + offs[i].dy,
+                         b.x + offs[(i + 1) % len].dx, b.y + offs[(i + 1) % len].dy);
+                }
+            }
+        }
+
+        function inkLine(x1, y1, x2, y2, col, w, o) {
+            inkPath(sampleOpen([{ x: x1, y: y1 }, { x: x2, y: y2 }], 8), col, w, o);
+        }
+
+        function dashedInk(x1, y1, x2, y2, col, w, alpha) {
+            const d = dist(x1, y1, x2, y2);
+            const dash = 8, gap = 6;
+            const n = Math.floor(d / (dash + gap));
+            stroke(col[0], col[1], col[2], alpha);
+            strokeWeight(w);
+            for (let i = 0; i < n; i++) {
+                const t0 = (i * (dash + gap)) / d;
+                const t1 = Math.min(1, (i * (dash + gap) + dash) / d);
+                const j = params.inkWobble * 0.8;
+                line(lerp(x1, x2, t0) + randomGaussian(0, j), lerp(y1, y2, t0) + randomGaussian(0, j),
+                     lerp(x1, x2, t1) + randomGaussian(0, j), lerp(y1, y2, t1) + randomGaussian(0, j));
+            }
+        }
+
+        function inkDot(x, y, r, col, alpha) {
+            noStroke();
+            fill(col[0], col[1], col[2], alpha !== undefined ? alpha : 220);
+            circle(x + randomGaussian(0, params.inkWobble * 0.5), y + randomGaussian(0, params.inkWobble * 0.5), r * 2);
+        }
+
+        function jpt(x, y, s) {
+            s = s !== undefined ? s : 2.5;
+            return { x: x + randomGaussian(0, s), y: y + randomGaussian(0, s) };
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // THE PAINTING
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function renderArt() {
+            const plumage   = hexToRgb(params.colorPalette[0]);
+            const pouchCol  = hexToRgb(params.colorPalette[1]);
+            const bikeCol   = hexToRgb(params.colorPalette[2]);
+
+            const shadowCol = mixc(darkenc(plumage, 0.35), [106, 120, 150], 0.45);
+            const billCol   = mixc(pouchCol, [240, 200, 110], 0.5);
+            const legCol    = darkenc(pouchCol, 0.15);
+            const pouchDeep = darkenc(pouchCol, 0.28);
+            const bikeWash  = lightenc(bikeCol, 0.5);
+            const bikeInk   = darkenc(bikeCol, 0.42);
+            const skyCol    = lightenc(bikeCol, 0.72);
+            const sageCol   = lightenc([120, 140, 93], 0.6);
+            const fishCol   = [127, 140, 158];
+
+            blendMode(BLEND);
+            background(PAPER[0], PAPER[1], PAPER[2]);
+            blendMode(MULTIPLY);
+
+            // subtle pre-wet blotches in the paper
+            for (let i = 0; i < 4; i++) {
+                paintBlob(circlePts(random(150, 1050), random(150, 1050), random(180, 320), 18),
+                          [243, 238, 226], { v0: 22, layerScale: 0.25, density: 30 });
+            }
+
+            // ── bicycle geometry (shared by washes, legs, ink) ──
+            const wheelR = 150;
+            const rearW  = { x: 390, y: 812 };
+            const frontW = { x: 812, y: 812 };
+            const bb     = { x: 560, y: 792 };
+            const seatT  = { x: 500, y: 580 };
+            const headT  = { x: 772, y: 566 };
+            const theta  = -0.55 + random(-0.28, 0.28);
+            const crankR = 66;
+            const frontPedal = { x: bb.x + Math.cos(theta) * crankR, y: bb.y + Math.sin(theta) * crankR };
+            const rearPedal  = { x: bb.x - Math.cos(theta) * crankR, y: bb.y - Math.sin(theta) * crankR };
+
+            // ── sky ──
+            paintBlob(circlePts(260 + random(-40, 40), 190 + random(-25, 25), 150, 22), skyCol, { v0: 16, layerScale: 0.7, density: 95 });
+            paintBlob(circlePts(900 + random(-40, 40), 148 + random(-25, 25), 118, 22), skyCol, { v0: 16, layerScale: 0.7, density: 90 });
+            paintBlob(circlePts(1050, 320 + random(-30, 30), 96, 20), skyCol, { v0: 14, layerScale: 0.6, density: 80 });
+            paintBlob(circlePts(168, 430 + random(-30, 30), 84, 18), lightenc([232, 205, 160], 0.35), { v0: 12, layerScale: 0.5, density: 70 });
+
+            // ── ground ──
+            paintBlob([
+                { x: 80, y: 962 }, { x: 300, y: 954 }, { x: 600, y: 960 }, { x: 900, y: 952 }, { x: 1120, y: 960 },
+                { x: 1120, y: 1002 }, { x: 760, y: 1010 }, { x: 380, y: 1006 }, { x: 80, y: 1000 }
+            ], sageCol, { v0: 12, layerScale: 0.8, density: 110 });
+            paintBlob(ellipsePts(rearW.x + 8, 968, 145, 15, 22), shadowCol, { v0: 8, layerScale: 0.5, density: 68 });
+            paintBlob(ellipsePts(frontW.x + 8, 968, 145, 15, 22), shadowCol, { v0: 8, layerScale: 0.5, density: 68 });
+
+            // ── far leg & foot (behind the frame) ──
+            const farLegPoly = strokeToPoly([
+                jpt(506, 556), jpt(496, 650), jpt(496, 742),
+                { x: rearPedal.x - 2, y: rearPedal.y - 8 }
+            ], 14, 8, 7);
+            paintBlob(farLegPoly, lightenc(legCol, 0.45), { v0: 6, density: 105, layerScale: 0.7 });
+            paintBlob([
+                { x: rearPedal.x - 14, y: rearPedal.y - 7 }, { x: rearPedal.x + 30, y: rearPedal.y - 2 },
+                { x: rearPedal.x + 26, y: rearPedal.y + 8 }, { x: rearPedal.x - 16, y: rearPedal.y + 4 }
+            ], lightenc(legCol, 0.45), { v0: 4, density: 100, layerScale: 0.5 });
+
+            // ── seat (mostly hidden under the sitting bird) ──
+            paintBlob([
+                jpt(462, 576, 1.5), jpt(500, 566, 1.5), jpt(534, 574, 1.5), jpt(514, 584, 1.5), jpt(470, 584, 1.5)
+            ], darkenc([120, 110, 100], 0.2), { v0: 5, density: 150, layerScale: 0.6 });
+
+            // ── bicycle washes ──
+            washStrokePath(circlePts(rearW.x, rearW.y, wheelR, 60), bikeWash, 24, { closed: true, density: 150 });
+            washStrokePath(circlePts(frontW.x, frontW.y, wheelR, 60), bikeWash, 24, { closed: true, density: 150 });
+            const tubes = [
+                [rearW, bb], [bb, seatT], [seatT, headT], [headT, bb], [headT, frontW], [rearW, { x: 505, y: 588 }]
+            ];
+            for (const t of tubes) {
+                washStrokePath(sampleOpen([t[0], t[1]], 8), bikeWash, 13, { passes: 8, density: 105 });
+            }
+
+            // ── pelican washes ──
+
+            // tail feathers
+            paintBlob(sampleClosed([
+                jpt(408, 500), jpt(330, 528), jpt(308, 556), jpt(352, 556), jpt(408, 540)
+            ], 5), plumage, { v0: 9, density: 130 });
+
+            // far wing hint
+            paintBlob(ellipsePts(478, 470, 66, 40, 20), lightenc(shadowCol, 0.35), { v0: 8, layerScale: 0.55, density: 60 });
+
+            // body
+            const bodyCtrl = [
+                jpt(612, 462), jpt(600, 530), jpt(540, 566), jpt(455, 556), jpt(398, 520),
+                jpt(402, 458), jpt(462, 412), jpt(540, 398), jpt(592, 420)
+            ];
+            paintBlob(sampleClosed(bodyCtrl, 6), plumage, { v0: 12, density: 150, edge: true });
+
+            // body shading
+            paintBlob(ellipsePts(560, 538, 68, 36, 20), shadowCol, { v0: 7, layerScale: 0.5, density: 62 });
+            paintBlob(ellipsePts(432, 512, 52, 40, 20), shadowCol, { v0: 7, layerScale: 0.5, density: 55 });
+
+            // near wing sweeping forward to rest on the handlebars
+            const wingPoly = strokeToPoly([
+                jpt(548, 428), jpt(612, 462), jpt(676, 494), jpt(732, 512), { x: 768, y: 520 }
+            ], 74, 14, 7);
+            paintBlob(wingPoly, plumage, { v0: 10, density: 140 });
+            paintBlob(ellipsePts(668, 502, 62, 14, 18), shadowCol, { v0: 6, layerScale: 0.45, density: 52 });
+
+            // neck — the S-curve
+            const neckPoly = strokeToPoly([
+                jpt(596, 432), jpt(636, 396), jpt(660, 344), jpt(668, 296), jpt(678, 258), jpt(692, 240)
+            ], 42, 26, 7);
+            paintBlob(neckPoly, plumage, { v0: 9, density: 135 });
+
+            // head + crest
+            paintBlob(circlePts(700, 238, 34, 24), plumage, { v0: 8, density: 140, edge: true });
+            paintBlob(circlePts(666, 212, 20, 16), lightenc(plumage, 0.25), { v0: 6, layerScale: 0.5, density: 70 });
+
+            // pouch — the famous bill-that-holds-more-than-the-belly-can
+            const pouchCtrl = [
+                jpt(716, 248, 1.5), jpt(782, 272, 1.5), jpt(846, 290, 1.5), jpt(903, 300, 1.5),
+                jpt(874, 334, 1.5), jpt(818, 353, 1.5), jpt(758, 338, 1.5), jpt(724, 296, 1.5)
+            ];
+            paintBlob(sampleClosed(pouchCtrl, 5), pouchCol, { v0: 9, density: 170, edge: true });
+            paintBlob(ellipsePts(806, 332, 58, 18, 18), pouchDeep, { v0: 6, layerScale: 0.5, density: 70 });
+
+            // upper mandible
+            const billPoly = strokeToPoly([
+                jpt(712, 232, 1.5), jpt(772, 250, 1.5), jpt(842, 274, 1.5), { x: 906, y: 298 }
+            ], 16, 6, 7);
+            paintBlob(billPoly, billCol, { v0: 5, density: 160, layerScale: 0.8 });
+
+            // the stowaway — a little fish tail peeking from the pouch
+            paintBlob([
+                { x: 800, y: 264 }, { x: 812, y: 236 }, { x: 824, y: 246 }, { x: 814, y: 268 }
+            ], fishCol, { v0: 3.5, density: 150, layerScale: 0.5 });
+
+            // near leg down to the front pedal
+            const nearLegPoly = strokeToPoly([
+                jpt(536, 556), jpt(552, 636), jpt(576, 704),
+                { x: frontPedal.x - 8, y: frontPedal.y - 8 }
+            ], 16, 9, 7);
+            paintBlob(nearLegPoly, legCol, { v0: 6, density: 150, layerScale: 0.8 });
+
+            // ── bicycle ink (drawn in bicycle-colored ink) ──
+            for (const wc of [rearW, frontW]) {
+                inkPath(circlePts(wc.x, wc.y, wheelR, 80), bikeInk, 2.4, { closed: true, broken: true });
+                inkPath(circlePts(wc.x, wc.y, wheelR - 13, 70), bikeInk, 1.5, { closed: true, alpha: 150 });
+                const spokeBase = random(TWO_PI);
+                for (let k = 0; k < 11; k++) {
+                    const a = spokeBase + (k / 11) * TWO_PI + random(-0.05, 0.05);
+                    inkLine(wc.x + Math.cos(a) * 18, wc.y + Math.sin(a) * 18,
+                            wc.x + Math.cos(a) * (wheelR - 17), wc.y + Math.sin(a) * (wheelR - 17),
+                            bikeInk, 1.1, { alpha: 115, passes: 1 });
+                }
+                inkPath(circlePts(wc.x, wc.y, 11, 18), bikeInk, 1.6, { closed: true, alpha: 170 });
+                inkDot(wc.x, wc.y, 3.5, bikeInk, 200);
+            }
+            for (const t of tubes) {
+                inkPath(sampleOpen([t[0], t[1]], 10), bikeInk, 3.2, { broken: true });
+            }
+            // chainring, sprocket, chain
+            inkPath(circlePts(bb.x, bb.y, 23, 26), bikeInk, 2, { closed: true });
+            inkPath(circlePts(rearW.x, rearW.y, 9, 14), bikeInk, 1.4, { closed: true, alpha: 160 });
+            dashedInk(bb.x - 4, bb.y - 23, rearW.x + 2, rearW.y - 9, bikeInk, 1.4, 105);
+            dashedInk(bb.x + 4, bb.y + 23, rearW.x + 2, rearW.y + 9, bikeInk, 1.4, 90);
+            // cranks & pedals
+            inkLine(bb.x, bb.y, frontPedal.x, frontPedal.y, bikeInk, 3.4, {});
+            inkLine(bb.x, bb.y, rearPedal.x, rearPedal.y, bikeInk, 2.6, { alpha: 150 });
+            inkLine(frontPedal.x - 20, frontPedal.y + 3, frontPedal.x + 22, frontPedal.y + 3, bikeInk, 5, {});
+            inkLine(rearPedal.x - 17, rearPedal.y + 3, rearPedal.x + 18, rearPedal.y + 3, bikeInk, 4, { alpha: 150 });
+            // handlebars: stem + swept-back bar + grip
+            inkPath(sampleOpen([
+                { x: headT.x, y: headT.y }, { x: 800, y: 548 }, { x: 806, y: 530 }, { x: 792, y: 514 }, { x: 766, y: 512 }
+            ], 7), bikeInk, 3.4, {});
+            inkDot(766, 512, 4.5, bikeInk, 210);
+            // seat outline & post
+            inkPath(sampleOpen([{ x: 462, y: 578 }, { x: 500, y: 568 }, { x: 534, y: 576 }], 8), bikeInk, 2.6, {});
+
+            // ── near webbed foot, painted over its pedal ──
+            paintBlob([
+                { x: frontPedal.x - 20, y: frontPedal.y - 2 }, { x: frontPedal.x + 36, y: frontPedal.y + 4 },
+                { x: frontPedal.x + 34, y: frontPedal.y + 15 }, { x: frontPedal.x + 18, y: frontPedal.y + 23 },
+                { x: frontPedal.x - 24, y: frontPedal.y + 8 }
+            ], legCol, { v0: 4.5, density: 155, layerScale: 0.6 });
+
+            // ── pelican ink (sepia) ──
+            const sepia = INKC;
+            // back contour
+            inkPath(sampleOpen([
+                { x: 598, y: 428 }, { x: 544, y: 402 }, { x: 468, y: 414 }, { x: 408, y: 456 }, { x: 400, y: 512 }
+            ], 8), sepia, 2.6, { broken: true });
+            // belly contour
+            inkPath(sampleOpen([
+                { x: 606, y: 470 }, { x: 596, y: 532 }, { x: 540, y: 566 }, { x: 462, y: 556 }
+            ], 8), sepia, 2.2, { broken: true, alpha: 170 });
+            // tail feather lines
+            inkPath(sampleOpen([{ x: 405, y: 516 }, { x: 358, y: 528 }, { x: 316, y: 540 }], 7), sepia, 1.7, { alpha: 150 });
+            inkPath(sampleOpen([{ x: 405, y: 528 }, { x: 356, y: 542 }, { x: 322, y: 554 }], 7), sepia, 1.7, { alpha: 140 });
+            inkPath(sampleOpen([{ x: 404, y: 540 }, { x: 362, y: 552 }, { x: 336, y: 562 }], 7), sepia, 1.5, { alpha: 120 });
+            // wing edge + feather scallops
+            inkPath(sampleOpen([
+                { x: 552, y: 452 }, { x: 618, y: 488 }, { x: 684, y: 516 }, { x: 740, y: 530 }, { x: 770, y: 526 }
+            ], 8), sepia, 2.4, { broken: true });
+            inkPath(sampleOpen([{ x: 612, y: 492 }, { x: 636, y: 508 }, { x: 660, y: 498 }], 6), sepia, 1.6, { alpha: 150 });
+            inkPath(sampleOpen([{ x: 664, y: 508 }, { x: 690, y: 522 }, { x: 714, y: 512 }], 6), sepia, 1.6, { alpha: 150 });
+            inkPath(sampleOpen([{ x: 712, y: 520 }, { x: 736, y: 532 }, { x: 758, y: 524 }], 6), sepia, 1.5, { alpha: 140 });
+            inkPath(sampleOpen([{ x: 734, y: 514 }, { x: 770, y: 522 }], 6), sepia, 1.3, { alpha: 130 });
+            inkPath(sampleOpen([{ x: 738, y: 506 }, { x: 772, y: 514 }], 6), sepia, 1.3, { alpha: 120 });
+            // neck lines
+            inkPath(sampleOpen([
+                { x: 610, y: 428 }, { x: 650, y: 388 }, { x: 672, y: 336 }, { x: 682, y: 286 }, { x: 692, y: 250 }
+            ], 8), sepia, 2.2, { broken: true });
+            inkPath(sampleOpen([
+                { x: 586, y: 440 }, { x: 626, y: 408 }, { x: 650, y: 352 }, { x: 658, y: 300 }, { x: 672, y: 252 }
+            ], 8), sepia, 1.7, { alpha: 130, broken: true });
+            // head + crest flicks
+            inkPath(circlePts(700, 238, 34, 30), sepia, 1.9, { closed: true, broken: true, alpha: 165 });
+            inkPath(sampleOpen([{ x: 664, y: 210 }, { x: 646, y: 196 }], 6), sepia, 1.4, { alpha: 130 });
+            inkPath(sampleOpen([{ x: 668, y: 222 }, { x: 648, y: 214 }], 6), sepia, 1.3, { alpha: 115 });
+            // bill: top ridge with tip hook, underside, pouch curve, jaw
+            inkPath(sampleOpen([
+                { x: 710, y: 224 }, { x: 772, y: 242 }, { x: 842, y: 266 }, { x: 908, y: 294 }, { x: 910, y: 304 }, { x: 900, y: 300 }
+            ], 8), sepia, 2.6, {});
+            inkPath(sampleOpen([
+                { x: 714, y: 242 }, { x: 770, y: 256 }, { x: 840, y: 280 }, { x: 906, y: 300 }
+            ], 8), sepia, 1.6, { alpha: 140 });
+            inkPath(sampleOpen([
+                { x: 718, y: 254 }, { x: 742, y: 300 }, { x: 776, y: 336 }, { x: 820, y: 352 }, { x: 868, y: 336 }, { x: 902, y: 304 }
+            ], 8), sepia, 2.2, {});
+            inkPath(sampleOpen([{ x: 712, y: 250 }, { x: 724, y: 286 }], 6), sepia, 1.5, { alpha: 140 });
+            // fish flicks
+            inkPath(sampleOpen([{ x: 804, y: 262 }, { x: 812, y: 240 }], 6), sepia, 1.3, { alpha: 150 });
+            inkPath(sampleOpen([{ x: 812, y: 244 }, { x: 822, y: 250 }], 5), sepia, 1.2, { alpha: 130 });
+            // eye
+            inkPath(circlePts(706, 226, 8, 14), sepia, 1.1, { closed: true, alpha: 120 });
+            inkDot(706, 226, 4.5, sepia, 230);
+            // legs + toes
+            inkPath(sampleOpen([
+                { x: 538, y: 560 }, { x: 554, y: 638 }, { x: 578, y: 704 }, { x: frontPedal.x - 8, y: frontPedal.y - 6 }
+            ], 8), sepia, 2, { broken: true, alpha: 170 });
+            inkPath(sampleOpen([{ x: frontPedal.x - 14, y: frontPedal.y + 2 }, { x: frontPedal.x + 34, y: frontPedal.y + 5 }], 6), sepia, 1.5, { alpha: 160 });
+            inkPath(sampleOpen([{ x: frontPedal.x - 14, y: frontPedal.y + 2 }, { x: frontPedal.x + 30, y: frontPedal.y + 12 }], 6), sepia, 1.4, { alpha: 145 });
+            inkPath(sampleOpen([{ x: frontPedal.x - 14, y: frontPedal.y + 2 }, { x: frontPedal.x + 16, y: frontPedal.y + 20 }], 6), sepia, 1.3, { alpha: 130 });
+            inkPath(sampleOpen([{ x: rearPedal.x - 10, y: rearPedal.y - 2 }, { x: rearPedal.x + 26, y: rearPedal.y + 2 }], 5), sepia, 1.2, { alpha: 95 });
+
+            // ── motion swishes behind the rear wheel ──
+            inkPath(sampleOpen([{ x: 238, y: 700 }, { x: 148, y: 688 }], 7), mixc(sepia, bikeInk, 0.5), 1.6, { alpha: 85 });
+            inkPath(sampleOpen([{ x: 232, y: 748 }, { x: 140, y: 745 }], 7), mixc(sepia, bikeInk, 0.5), 1.6, { alpha: 75 });
+            inkPath(sampleOpen([{ x: 242, y: 796 }, { x: 158, y: 800 }], 7), mixc(sepia, bikeInk, 0.5), 1.5, { alpha: 65 });
+
+            // ── flicked paint ──
+            const splatCols = [darkenc(bikeWash, 0.15), pouchCol, shadowCol];
+            for (let i = 0; i < params.splatter; i++) {
+                const sx = constrain(randomGaussian(610, 300), 50, 1150);
+                const sy = constrain(randomGaussian(560, 240), 50, 1150);
+                const r = random(1.2, 6) * (random() < 0.08 ? random(1.6, 2.4) : 1);
+                const sc = splatCols[Math.floor(random(splatCols.length))];
+                const sa = random(35, 95);
+                noStroke();
+                fill(sc[0], sc[1], sc[2], sa);
+                const drop = deform(attachVariance(circlePts(sx, sy, r, 8), r * 0.7), 1, 1);
+                fillPoly(drop);
+                fill(sc[0], sc[1], sc[2], sa * 0.5);
+                fillPoly(deform(attachVariance(circlePts(sx, sy, r * 1.15, 8), r * 0.8), 1, 1));
+                if (random() < 0.15) {
+                    stroke(sc[0], sc[1], sc[2], sa * 0.7);
+                    strokeWeight(random(0.6, 1.2));
+                    const da = random(TWO_PI), dl = random(6, 18);
+                    line(sx, sy, sx + Math.cos(da) * dl, sy + Math.sin(da) * dl);
+                }
+            }
+
+            // ── paper tooth ──
+            blendMode(BLEND);
+            noStroke();
+            const specks = Math.round(9000 * params.paperGrain);
+            for (let i = 0; i < specks; i++) {
+                const gx = random(width), gy = random(height);
+                if (i % 2 === 0) fill(255, 255, 252, random(5, 12));
+                else fill(184, 176, 160, random(4, 9));
+                rect(gx, gy, random(1, 2.2), random(1, 2.2));
+            }
+
+            // eye glint (needs normal blending to sit on top)
+            fill(255, 255, 255, 200);
+            circle(704.5, 224.5, 3);
+
+            // ── rough deckled paper border ──
+            const inset = 16;
+            const edges = [
+                [{ x: -20, y: inset }, { x: width + 20, y: inset }],
+                [{ x: -20, y: height - inset }, { x: width + 20, y: height - inset }],
+                [{ x: inset, y: -20 }, { x: inset, y: height + 20 }],
+                [{ x: width - inset, y: -20 }, { x: width - inset, y: height + 20 }]
+            ];
+            for (const e of edges) {
+                washStrokePath(sampleOpen([e[0], e[1]], 26), PAPER, 40, { passes: 12, density: 320, jit: 1.4 });
+            }
+            noStroke();
+            fill(PAPER[0], PAPER[1], PAPER[2]);
+            rect(0, 0, width, 6); rect(0, height - 6, width, 6);
+            rect(0, 0, 6, height); rect(width - 6, 0, 6, height);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // P5 LIFECYCLE
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function setup() {
+            const canvas = createCanvas(1200, 1200);
+            canvas.parent('canvas-container');
+            pixelDensity(1);
+            noLoop();
+            initializeSystem();
+            document.querySelector('.loading').style.display = 'none';
+        }
+
+        function initializeSystem() {
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+            renderArt();
+        }
+
+        function draw() {
+            // static painting — everything happens in initializeSystem()
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // UI CONTROL HANDLERS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let renderTimer = null;
+        function scheduleRender() {
+            clearTimeout(renderTimer);
+            renderTimer = setTimeout(initializeSystem, 120);
+        }
+
+        function updateParam(paramName, value) {
+            params[paramName] = parseFloat(value);
+            document.getElementById(paramName + '-value').textContent = value;
+            scheduleRender();
+        }
+
+        function updateColor(colorId, value) {
+            const idx = { color1: 0, color2: 1, color3: 2 }[colorId];
+            params.colorPalette[idx] = value;
+            document.getElementById(colorId + '-value').textContent = value;
+            scheduleRender();
+        }
+
+        function regenerate() {
+            initializeSystem();
+        }
+
+        function downloadPNG() {
+            saveCanvas('buoyant-pigment-pelican-seed-' + params.seed, 'png');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // SEED CONTROL FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function updateSeedDisplay() {
+            document.getElementById('seed-input').value = params.seed;
+        }
+
+        function updateSeed() {
+            const input = document.getElementById('seed-input');
+            const newSeed = parseInt(input.value);
+            if (newSeed && newSeed > 0) {
+                params.seed = newSeed;
+                initializeSystem();
+            } else {
+                updateSeedDisplay();
+            }
+        }
+
+        function previousSeed() {
+            params.seed = Math.max(1, params.seed - 1);
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function nextSeed() {
+            params.seed = params.seed + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function randomSeedAndUpdate() {
+            params.seed = Math.floor(Math.random() * 999999) + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function resetParameters() {
+            params = JSON.parse(JSON.stringify(defaultParams));
+
+            document.getElementById('washLayers').value = params.washLayers;
+            document.getElementById('washLayers-value').textContent = params.washLayers;
+            document.getElementById('edgeBleed').value = params.edgeBleed;
+            document.getElementById('edgeBleed-value').textContent = params.edgeBleed;
+            document.getElementById('inkWobble').value = params.inkWobble;
+            document.getElementById('inkWobble-value').textContent = params.inkWobble;
+            document.getElementById('splatter').value = params.splatter;
+            document.getElementById('splatter-value').textContent = params.splatter;
+            document.getElementById('paperGrain').value = params.paperGrain;
+            document.getElementById('paperGrain-value').textContent = params.paperGrain;
+
+            document.getElementById('color1').value = params.colorPalette[0];
+            document.getElementById('color1-value').textContent = params.colorPalette[0];
+            document.getElementById('color2').value = params.colorPalette[1];
+            document.getElementById('color2-value').textContent = params.colorPalette[1];
+            document.getElementById('color3').value = params.colorPalette[2];
+            document.getElementById('color3-value').textContent = params.colorPalette[2];
+
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        // Initialize UI on load
+        window.addEventListener('load', function() {
+            updateSeedDisplay();
+        });
+    </script>
+</body>
+</html>
