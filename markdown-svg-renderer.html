@@ -365,6 +365,48 @@ svg {
 ${"</" + "html>"}`;
 }
 
+function escapeAttribute(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+const htmlAllowedCdns = [
+  "https://cdnjs.cloudflare.com",
+  "cdnjs.cloudflare.com",
+  "https://cdn.jsdelivr.net",
+  "cdn.jsdelivr.net",
+  "https://unpkg.com",
+  "unpkg.com",
+  "https://esm.sh",
+  "esm.sh"
+].join(" ");
+
+const htmlPreviewCsp = [
+  "default-src 'none'",
+  `script-src 'unsafe-inline' 'unsafe-eval' ${htmlAllowedCdns}`,
+  `style-src 'unsafe-inline' ${htmlAllowedCdns}`,
+  `img-src data: blob: ${htmlAllowedCdns}`,
+  `font-src data: ${htmlAllowedCdns}`,
+  `connect-src ${htmlAllowedCdns}`,
+  `media-src ${htmlAllowedCdns}`,
+  "frame-src 'none'",
+  "object-src 'none'",
+  "form-action 'none'",
+  "base-uri 'none'"
+].join("; ") + ";";
+
+function htmlPreviewDocument(html) {
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(htmlPreviewCsp)}">`;
+  const trimmed = (html || "").trimStart();
+  if (/^<!doctype\s+html[^>]*>/i.test(trimmed)) {
+    return trimmed.replace(/^<!doctype\s+html[^>]*>/i, (match) => `${match}\n${meta}`);
+  }
+  return `<!doctype html>\n${meta}\n${html}`;
+}
+
 // ---- Animated SVG detection ----
 // Parse an SMIL clock value ("2s", "150ms", "1.5min", bare seconds) into
 // seconds, or null if it is not a plain clock value (e.g. "click", "0:02").
@@ -590,6 +632,46 @@ function getFfmpeg() {
   return ffmpegPromise;
 }
 
+const COPY_ICON_SVG = `<svg class="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+const CHECK_ICON_SVG = `<svg class="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+function copyTextToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  }
+  return Promise.resolve(fallbackCopy(text));
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+  } finally {
+    ta.remove();
+  }
+}
+
+function setupCopyButton(shadow, code) {
+  const copyBtn = shadow.querySelector(".copy-btn");
+  if (!copyBtn) return;
+  let timer = null;
+  copyBtn.addEventListener("click", async () => {
+    await copyTextToClipboard(code);
+    copyBtn.classList.add("copied");
+    copyBtn.innerHTML = `${CHECK_ICON_SVG} <span class="copy-text">Copied!</span>`;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      copyBtn.classList.remove("copied");
+      copyBtn.innerHTML = `${COPY_ICON_SVG} <span class="copy-text">Copy</span>`;
+    }, 1500);
+  });
+}
+
 class SvgBlock extends HTMLElement {
   connectedCallback() {
     if (this.shadowRoot) return;
@@ -756,6 +838,9 @@ class SvgBlock extends HTMLElement {
           border: 0;
           background: #fff;
         }
+        .code-wrap {
+          position: relative;
+        }
         pre {
           margin: 0;
           padding: 14px 16px;
@@ -765,6 +850,37 @@ class SvgBlock extends HTMLElement {
           font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
           font-size: 13px;
           line-height: 1.5;
+        }
+        .copy-btn {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-family: inherit;
+          font-size: 12px;
+          color: #bbb;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          padding: 4px 8px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .copy-btn:hover {
+          color: #fff;
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.35);
+        }
+        .copy-btn.copied {
+          color: #22c55e;
+          border-color: #22c55e;
+          background: rgba(34, 197, 94, 0.15);
+        }
+        .copy-btn svg {
+          display: block;
+          flex-shrink: 0;
         }
       </style>
       <div class="tabs">
@@ -799,12 +915,21 @@ class SvgBlock extends HTMLElement {
         </div>
       </div>
       ${mp4Panel}
-      <div class="panel" data-panel="code"><pre></pre></div>
+      <div class="panel" data-panel="code">
+        <div class="code-wrap">
+          <button type="button" class="copy-btn copy-code" title="Copy code" aria-label="Copy code">
+            ${COPY_ICON_SVG}
+            <span class="copy-text">Copy</span>
+          </button>
+          <pre></pre>
+        </div>
+      </div>
     `;
 
     shadow.querySelector(".svg-wrap").style.aspectRatio = svgAspectRatio(code);
     shadow.querySelector("iframe").srcdoc = svgPreviewDocument(code);
     shadow.querySelector("pre").textContent = code;
+    setupCopyButton(shadow, code);
 
     const buttons = shadow.querySelectorAll(".tabs button");
     const panels = shadow.querySelectorAll(".panel");
@@ -1091,10 +1216,152 @@ class SvgBlock extends HTMLElement {
 }
 customElements.define("svg-block", SvgBlock);
 
+class HtmlBlock extends HTMLElement {
+  connectedCallback() {
+    if (this.shadowRoot) return;
+
+    const code = this.getAttribute("data-html") || "";
+    const shadow = this.attachShadow({ mode: "open" });
+
+    shadow.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          max-width: 100%;
+          margin: 1em 0;
+          border: 1px solid #e2e2e2;
+          border-radius: 8px;
+          overflow: hidden;
+          font-family: Helvetica, Arial, sans-serif;
+        }
+        .tabs {
+          display: flex;
+          border-bottom: 1px solid #e2e2e2;
+          background: #f6f6f6;
+        }
+        .tabs button {
+          font-family: inherit;
+          font-size: 13px;
+          border: none;
+          background: none;
+          padding: 8px 16px;
+          cursor: pointer;
+          color: #666;
+          border-bottom: 2px solid transparent;
+          margin-bottom: -1px;
+        }
+        .tabs button.active {
+          color: #1a1a1a;
+          font-weight: bold;
+          border-bottom-color: #2563eb;
+          background: #fff;
+        }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .html-wrap {
+          width: 100%;
+          height: 400px;
+          min-height: 150px;
+          background: #fff;
+          resize: vertical;
+          overflow: auto;
+        }
+        iframe {
+          display: block;
+          width: 100%;
+          height: 100%;
+          border: 0;
+          background: #fff;
+        }
+        .code-wrap {
+          position: relative;
+        }
+        pre {
+          margin: 0;
+          padding: 14px 16px;
+          overflow-x: auto;
+          background: #1e1e1e;
+          color: #e8e8e8;
+          font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+        .copy-btn {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-family: inherit;
+          font-size: 12px;
+          color: #bbb;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          padding: 4px 8px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .copy-btn:hover {
+          color: #fff;
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.35);
+        }
+        .copy-btn.copied {
+          color: #22c55e;
+          border-color: #22c55e;
+          background: rgba(34, 197, 94, 0.15);
+        }
+        .copy-btn svg {
+          display: block;
+          flex-shrink: 0;
+        }
+      </style>
+      <div class="tabs">
+        <button class="active" data-tab="render">Rendered</button>
+        <button data-tab="code">Code</button>
+      </div>
+      <div class="panel active" data-panel="render">
+        <div class="html-wrap">
+          <iframe title="Rendered HTML" sandbox="allow-scripts" csp="${htmlPreviewCsp}"
+            referrerpolicy="no-referrer"></iframe>
+        </div>
+      </div>
+      <div class="panel" data-panel="code">
+        <div class="code-wrap">
+          <button type="button" class="copy-btn copy-code" title="Copy code" aria-label="Copy code">
+            ${COPY_ICON_SVG}
+            <span class="copy-text">Copy</span>
+          </button>
+          <pre></pre>
+        </div>
+      </div>
+    `;
+
+    shadow.querySelector("iframe").srcdoc = htmlPreviewDocument(code);
+    shadow.querySelector("pre").textContent = code;
+    setupCopyButton(shadow, code);
+
+    const buttons = shadow.querySelectorAll(".tabs button");
+    const panels = shadow.querySelectorAll(".panel");
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        buttons.forEach((b) => b.classList.toggle("active", b === btn));
+        panels.forEach((p) =>
+          p.classList.toggle("active", p.dataset.panel === tab)
+        );
+      });
+    });
+  }
+}
+customElements.define("html-block", HtmlBlock);
+
 // ---- Markdown rendering ----
 const markdownSanitizeConfig = {
   USE_PROFILES: { html: true },
-  ADD_ATTR: ["data-svg-id"],
+  ADD_ATTR: ["data-svg-id", "data-html-id"],
   FORBID_ATTR: ["style"],
   FORBID_TAGS: ["style"]
 };
@@ -1105,10 +1372,11 @@ const md = window.markdownit({
   typographer: false
 });
 
-// Raw SVG sources are stashed here and represented in the sanitized Markdown
-// by numeric ids. hydrateSvgBlocks() passes them to the sandboxed iframe using
-// DOM APIs, so SVG markup is never parsed in the parent document.
+// Raw SVG and HTML sources are stashed here and represented in the sanitized Markdown
+// by numeric ids. hydrateSvgBlocks() and hydrateHtmlBlocks() pass them to the sandboxed
+// iframes using DOM APIs, so raw markup is never parsed in the parent document.
 const svgStore = new Map();
+const htmlStore = new Map();
 
 const defaultFenceRenderer = md.renderer.rules.fence;
 md.renderer.rules.fence = (tokens, idx, options, env, self) => {
@@ -1116,12 +1384,21 @@ md.renderer.rules.fence = (tokens, idx, options, env, self) => {
   const lang = (token.info || "").trim().split(/\s+/)[0].toLowerCase();
   const trimmed = token.content.trim();
   const isSvg = lang === "svg" || (lang === "xml" && trimmed.startsWith("<svg") && trimmed.endsWith("</svg>"));
+  const isHtml = lang === "html";
 
   if (isSvg) {
     if (trimmed) {
       const id = String(svgStore.size);
       svgStore.set(id, token.content);
       return `<div class="svg-block-placeholder" data-svg-id="${id}"></div>\n`;
+    }
+  }
+
+  if (isHtml) {
+    if (trimmed) {
+      const id = String(htmlStore.size);
+      htmlStore.set(id, token.content);
+      return `<div class="html-block-placeholder" data-html-id="${id}"></div>\n`;
     }
   }
 
@@ -1141,8 +1418,22 @@ function hydrateSvgBlocks(root) {
   });
 }
 
+function hydrateHtmlBlocks(root) {
+  root.querySelectorAll(".html-block-placeholder[data-html-id]").forEach((placeholder) => {
+    const html = htmlStore.get(placeholder.getAttribute("data-html-id"));
+    if (!html) {
+      placeholder.remove();
+      return;
+    }
+    const block = document.createElement("html-block");
+    block.setAttribute("data-html", html);
+    placeholder.replaceWith(block);
+  });
+}
+
 function renderMarkdown(src) {
   svgStore.clear();
+  htmlStore.clear();
   const html = md.render(src);
   return window.DOMPurify.sanitize(html, markdownSanitizeConfig);
 }
@@ -1205,6 +1496,7 @@ function update() {
   output.innerHTML = renderMarkdown(input.value);
   addHeadingAnchors(output);
   hydrateSvgBlocks(output);
+  hydrateHtmlBlocks(output);
 }
 
 input.addEventListener("input", update);
@@ -1394,10 +1686,31 @@ browser using ffmpeg.wasm:
 </svg>
 \`\`\`
 
+HTML blocks render in a sandboxed iframe with scripts allowed, restricted by a CSP
+allowing resources only from cdnjs, jsdelivr, unpkg, and esm.sh:
+
+\`\`\`html
+<div id="demo" style="padding: 24px; font-family: system-ui, sans-serif; text-align: center;">
+  <h2>Interactive HTML Preview</h2>
+  <button id="counter" style="padding: 8px 16px; font-size: 16px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #fff;">
+    Clicks: 0
+  </button>
+</div>
+<script>
+  let count = 0;
+  const btn = document.getElementById("counter");
+  btn.addEventListener("click", () => {
+    count++;
+    btn.textContent = "Clicks: " + count;
+  });
+<\/script>
+\`\`\`
+
 | Feature | Supported |
 |---------|-----------|
 | Tables  | Yes       |
 | SVG tabs| Yes       |
+| HTML tabs| Yes      |
 `;
 
 // On load: redirect legacy #url= links, otherwise load ?url= if present.

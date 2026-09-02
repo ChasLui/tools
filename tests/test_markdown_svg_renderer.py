@@ -185,3 +185,98 @@ def test_generate_mp4(page: Page, unused_port_server):
     assert b"moov" in data
     assert b"avc1" in data
 
+
+def test_html_block_rendered_in_sandboxed_iframe_with_csp(
+    page: Page, unused_port_server
+):
+    unused_port_server.start(root)
+    leaked_urls = []
+
+    def record_leak(route):
+        leaked_urls.append(route.request.url)
+        route.abort()
+
+    page.route("**/html-leak-probe-*", record_leak)
+    page.goto(
+        f"http://127.0.0.1:{unused_port_server.port}/markdown-svg-renderer.html"
+    )
+
+    html = """<div id="greeting">Hello HTML</div>
+<script>
+  document.getElementById("greeting").setAttribute("data-script-ran", "yes");
+  fetch("http://127.0.0.1:%s/html-leak-probe-script");
+</script>
+<img src="http://127.0.0.1:%s/html-leak-probe-image"/>
+<iframe src="http://127.0.0.1:%s/html-leak-probe-frame"></iframe>""" % ((unused_port_server.port,) * 3)
+
+    page.locator("#input").fill(f"```html\n{html}\n```")
+    block = page.locator("html-block")
+    expect(block).to_be_visible()
+
+    assert block.get_attribute("data-html") == html + "\n"
+
+    iframe_locator = page.locator("html-block iframe")
+    assert iframe_locator.get_attribute("sandbox") == "allow-scripts"
+
+    csp = iframe_locator.get_attribute("csp")
+    assert csp is not None
+    assert "default-src 'none'" in csp
+    assert "cdnjs.cloudflare.com" in csp
+    assert "cdn.jsdelivr.net" in csp
+    assert "unpkg.com" in csp
+    assert "esm.sh" in csp
+
+    srcdoc = iframe_locator.get_attribute("srcdoc")
+    assert srcdoc is not None
+    assert srcdoc.startswith(
+        '<!doctype html>\n<meta http-equiv="Content-Security-Policy"'
+    )
+    assert "cdnjs.cloudflare.com" in srcdoc
+    assert "cdn.jsdelivr.net" in srcdoc
+    assert "unpkg.com" in srcdoc
+    assert "esm.sh" in srcdoc
+
+    iframe_element = iframe_locator.element_handle()
+    assert iframe_element is not None
+    iframe = iframe_element.content_frame()
+    assert iframe is not None
+
+    expect(iframe.locator("#greeting")).to_have_text("Hello HTML")
+    expect(iframe.locator("#greeting")).to_have_attribute("data-script-ran", "yes")
+
+    page.wait_for_timeout(500)
+    assert leaked_urls == []
+
+    # Verify tabs
+    code_button = block.locator('button[data-tab="code"]')
+    expect(code_button).to_be_visible()
+    code_button.click()
+    expect(block.locator('.panel[data-panel="code"] pre')).to_have_text(html + "\n")
+
+    # Verify copy button in code tab
+    copy_button = block.locator('.panel[data-panel="code"] .copy-btn')
+    expect(copy_button).to_be_visible()
+    expect(copy_button.locator('svg.copy-icon')).to_be_visible()
+    copy_button.click()
+    expect(copy_button).to_have_text("Copied!")
+    expect(copy_button.locator('svg.check-icon')).to_be_visible()
+
+
+def test_svg_code_tab_has_copy_button(page: Page, unused_port_server):
+    unused_port_server.start(root)
+    page.goto(
+        f"http://127.0.0.1:{unused_port_server.port}/markdown-svg-renderer.html"
+    )
+    block = fill_svg_block(page, STATIC_SVG)
+    code_button = block.locator('button[data-tab="code"]')
+    code_button.click()
+    expect(block.locator('.panel[data-panel="code"] pre')).to_have_text(STATIC_SVG + "\n")
+
+    copy_button = block.locator('.panel[data-panel="code"] .copy-btn')
+    expect(copy_button).to_be_visible()
+    expect(copy_button.locator('svg.copy-icon')).to_be_visible()
+    copy_button.click()
+    expect(copy_button).to_have_text("Copied!")
+    expect(copy_button.locator('svg.check-icon')).to_be_visible()
+
+
