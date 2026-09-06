@@ -4,6 +4,29 @@ These Python scripts can be run directly from their URLs using `uv run`.
 
 Their source code is [available on GitHub](https://github.com/simonw/tools/tree/main/python).
 
+## find_secrets.py
+
+Highlight possible API tokens and other secrets in a local text file or an
+HTTP(S) response. Prints each complete match inside `[[double brackets]]`, in
+red on a terminal, with its line/column, entropy score, and 15 characters before
+and after it. Newlines and control characters are escaped for display.
+
+```bash
+uv run https://tools.simonwillison.net/python/find_secrets.py config.txt
+uv run https://tools.simonwillison.net/python/find_secrets.py https://example.com/app.js
+cat config.txt | uv run https://tools.simonwillison.net/python/find_secrets.py -
+```
+
+Uses Shannon entropy (default minimum length 20, threshold 4.0 bits/character,
+or 3.0 for hex) and common token prefixes. Prefix matches bypass the entropy
+and minimum-length options. Use `--threshold`, `--hex-threshold`, and
+`--min-length` to tune sensitivity; `-c/--context` changes the context size.
+`--color always|never|auto` controls color. Findings are heuristics: hashes can
+match and some secrets will be missed. It displays secrets in full and does
+not validate them with their providers. A URL fetches that resource's contents;
+it does not crawl linked resources. Successful scans exit 0, including when
+matches are found; input errors exit 2.
+
 ## extract_urls.py
 
 Extract potential URLs from a local text file or an HTTP(S) resource and print
